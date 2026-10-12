@@ -9,6 +9,12 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const noLocalStorage = {
+  selector: "MemberExpression[object.name='localStorage']",
+  message:
+    'Business data never lives in localStorage; use the API. UI preferences use cookies via the preference helpers.',
+};
+
 export const ignores = {
   ignores: [
     '**/node_modules/**',
@@ -36,14 +42,7 @@ export const base = [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always'],
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: "MemberExpression[object.name='localStorage']",
-          message:
-            'Business data never lives in localStorage; use the API. UI preferences use the theme/preferences helpers.',
-        },
-      ],
+      'no-restricted-syntax': ['error', noLocalStorage],
     },
   },
   {
@@ -54,6 +53,29 @@ export const base = [
     // Command-line scripts report progress on stdout.
     files: ['**/scripts/**/*.{js,mjs}'],
     rules: { 'no-console': 'off' },
+  },
+];
+
+// Colours come only from design tokens (packages/ui/src/styles/theme.css); a hex literal in a
+// component or class string bypasses theming, dark mode and contrast validation.
+export const noRawColors = [
+  {
+    files: ['**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', '**/test/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        noLocalStorage,
+        {
+          selector: 'Literal[value=/#[0-9A-Fa-f]{3,8}(?![0-9A-Za-z])/]',
+          message: 'Use a semantic colour token instead of a raw hex value.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/#[0-9A-Fa-f]{3,8}(?![0-9A-Za-z])/]',
+          message: 'Use a semantic colour token instead of a raw hex value.',
+        },
+      ],
+    },
   },
 ];
 

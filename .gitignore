@@ -34,8 +34,7 @@ coverage/
 .vitest/
 test-results/
 playwright-report/
-packages/ui/visual/actual/
-packages/ui/visual/diff/
+packages/ui/visual/.results/
 
 # Editors and OS
 .vscode/*

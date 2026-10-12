@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '../src/styles/theme.css';
+
+/* Stories use layout utilities too (theme.css only scans components). */
+@source '../src';

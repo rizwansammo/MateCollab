@@ -1,0 +1,276 @@
+/*
+ * MateCollab design tokens — the only place raw colour values may appear.
+ *
+ * Imported by apps/web (after `@import "tailwindcss"`) and by Storybook. Every colour is a
+ * semantic token defined with light-dark(); the active scheme comes from `color-scheme`, which
+ * follows the `data-theme` attribute (light | dark | system). "System" therefore tracks the
+ * operating system in pure CSS: no script, no flash. Tailwind's default palette is removed so
+ * components can only use these tokens. Values and contrast rationale: docs/architecture/FRONTEND.md §5;
+ * contrast is re-checked by test/tokens.test.ts.
+ *
+ * `@theme inline`: Tailwind compiles light-dark() through Lightning CSS, whose polyfill resolves a
+ * custom property where it is declared (:root). Inlining the values into each utility makes them
+ * resolve on the element itself, so nested `data-theme` scopes (theme previews) work too.
+ */
+
+@source "../";
+
+/* `dark:` follows the resolved theme: explicit dark, or system while the OS prefers dark. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme='system'], [data-theme='system'] *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  /* ---- Colour ------------------------------------------------------------------------- */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Library brand values (ADR-008). */
+  --color-brand-violet: #7047d1;
+  --color-brand-navy: #101a2d;
+
+  /* Surfaces */
+  --color-bg: light-dark(#ffffff, #171e29);
+  --color-surface: light-dark(#fafbfd, #1a2230);
+  --color-card: light-dark(#ffffff, #1d2633);
+  --color-popover: light-dark(#ffffff, #202a39);
+  --color-sidebar: light-dark(#f7f8fa, #1b2330);
+  --color-muted: light-dark(#f3f5f8, #242e3d);
+  --color-subtle: light-dark(#f0f3f8, #222d3e);
+  --color-overlay: light-dark(rgb(16 26 45 / 40%), rgb(5 8 14 / 62%));
+
+  /* Text and icons */
+  --color-fg: light-dark(#253248, #dde4ef);
+  --color-fg-muted: light-dark(#667185, #95a2b5);
+  --color-fg-nav: light-dark(#627087, #a2afc2);
+  --color-icon-muted: light-dark(#8995a6, #7d8aa0);
+
+  /* Lines */
+  --color-border: light-dark(#e5e9ef, #303a49);
+  --color-border-control: light-dark(#8a95a7, #66758c);
+  --color-scrollbar: light-dark(#c3cbd6, #475367);
+
+  /* Brand interaction */
+  --color-primary: #7047d1;
+  --color-primary-hover: light-dark(#5e37bd, #7b55db);
+  --color-primary-control: light-dark(#7047d1, #8a66ec);
+  --color-primary-ink: light-dark(#5a35b8, #a48af0);
+  --color-accent: light-dark(#f1ecfc, #2b2547);
+  --color-accent-strong: light-dark(#e3d9fa, #463a7a);
+  --color-accent-strong-fg: light-dark(#5a35b8, #e2d8ff);
+  --color-focus: light-dark(#7047d1, #a48af0);
+
+  /* Primary rail (Navy in both themes) */
+  --color-rail: #101a2d;
+  --color-rail-fg: #9daec5;
+  --color-rail-fg-active: #c9b8f5;
+  --color-rail-indicator: #9a7beb;
+  --color-rail-hover: rgb(255 255 255 / 5%);
+  --color-rail-line: #25354b;
+
+  /* Navigation details */
+  --color-nav-count: light-dark(#e9edf4, #334157);
+  --color-nav-count-fg: light-dark(#56637a, #c2d0e7);
+  --color-org: light-dark(#f1ecfc, #2b2547);
+  --color-org-line: light-dark(#d9ccf5, #3e3566);
+  --color-org-fg: light-dark(#5a35b8, #c9b8f5);
+
+  /* Status */
+  --color-danger: light-dark(#c64545, #ee9a9a);
+  --color-danger-solid: #c64545;
+  --color-danger-solid-hover: #ad3939;
+  --color-danger-badge: light-dark(#f9e9e9, #452e33);
+  --color-danger-badge-fg: light-dark(#a33f3f, #eeaaaa);
+  --color-success: light-dark(#1f7a5c, #88d6b6);
+  --color-success-bg: light-dark(#e9f5ef, #213c35);
+  --color-warning: light-dark(#8a5b1e, #e1b774);
+  --color-warning-bg: light-dark(#faf1df, #413522);
+
+  /* Presence (always paired with a text label or tooltip) */
+  --color-presence-available: #2e9775;
+  --color-presence-busy: #cf615c;
+  --color-presence-away: #c89639;
+  --color-presence-dnd: #cc5656;
+  --color-presence-offline: #9ca7b6;
+
+  /* Controls */
+  --color-switch-off: light-dark(#8a95a7, #66758c);
+  --color-tooltip: light-dark(#253248, #dde4ef);
+  --color-tooltip-fg: light-dark(#ffffff, #171e29);
+
+  /* Avatar initial tones (≥ 4.6:1 in both themes) */
+  --color-tone-1: light-dark(#e2e5ec, #b9bcc2);
+  --color-tone-1-fg: light-dark(#4d586d, #3f4859);
+  --color-tone-2: light-dark(#f0e2d8, #c5b9b1);
+  --color-tone-2-fg: light-dark(#805c48, #5e4435);
+  --color-tone-3: light-dark(#ddeae5, #b5c0bc);
+  --color-tone-3-fg: light-dark(#446f60, #325247);
+  --color-tone-4: light-dark(#e6e0f0, #bdb8c5);
+  --color-tone-4-fg: light-dark(#6d5b84, #514462);
+  --color-tone-5: light-dark(#e0e9ed, #b8bfc2);
+  --color-tone-5-fg: light-dark(#4b6a7b, #384f5b);
+
+  /* ---- Type --------------------------------------------------------------------------- */
+  --font-*: initial;
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+
+  --text-*: initial;
+  --text-11: 0.6875rem;
+  --text-11--line-height: 1.45;
+  --text-12: 0.75rem;
+  --text-12--line-height: 1.5;
+  --text-13: 0.8125rem;
+  --text-13--line-height: 1.5;
+  --text-14: 0.875rem;
+  --text-14--line-height: 1.5;
+  --text-15: 0.9375rem;
+  --text-15--line-height: 1.45;
+  --text-16: 1rem;
+  --text-16--line-height: 1.4;
+  --text-18: 1.125rem;
+  --text-18--line-height: 1.35;
+  --text-19: 1.2rem;
+  --text-19--line-height: 1.3;
+  --text-24: 1.5rem;
+  --text-24--line-height: 1.25;
+  --text-28: 1.75rem;
+  --text-28--line-height: 1.25;
+  --text-32: 2rem;
+  --text-32--line-height: 1.2;
+
+  --font-weight-book: 450;
+  --font-weight-strong: 550;
+  --font-weight-heading: 650;
+  --font-weight-heavy: 750;
+
+  --tracking-heading: -0.7px;
+  --tracking-title: -0.3px;
+  --tracking-tight: -0.15px;
+  --tracking-label: 1.1px;
+  --tracking-eyebrow: 1.7px;
+
+  /* ---- Shape -------------------------------------------------------------------------- */
+  --radius-*: initial;
+  --radius-sm: 4px; /* tooltip, badge, kbd, checkbox */
+  --radius-md: 6px; /* input, select, button, card, menu, composer */
+  --radius-lg: 8px; /* modal, sheet */
+
+  --shadow-*: initial;
+  --shadow-popover: 0 12px 40px light-dark(rgb(16 26 45 / 9%), rgb(0 0 0 / 33%));
+  --shadow-panel: -8px 0 26px light-dark(rgb(20 34 53 / 3%), rgb(0 0 0 / 22%));
+  --shadow-raised: 0 1px 2px light-dark(rgb(16 26 45 / 6%), rgb(0 0 0 / 25%));
+
+  /* ---- Layout ------------------------------------------------------------------------- */
+  /* Prototype breakpoints: max-phone ≤ 760, max-tablet ≤ 1100, max-compact ≤ 1320,
+     dock ≥ 1400 (right panel docks), wide ≥ 1650. */
+  --breakpoint-*: initial;
+  --breakpoint-phone: 761px;
+  --breakpoint-tablet: 1101px;
+  --breakpoint-compact: 1321px;
+  --breakpoint-dock: 1400px;
+  --breakpoint-wide: 1650px;
+
+  --animate-fade-in: mc-fade-in 140ms ease-out;
+  --animate-pop-in: mc-pop-in 140ms ease-out;
+  --animate-slide-in-left: mc-slide-in-left 180ms ease-out;
+  --animate-slide-in-right: mc-slide-in-right 180ms ease-out;
+  --animate-slide-in-up: mc-slide-in-up 180ms ease-out;
+
+  @keyframes mc-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes mc-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+  }
+  @keyframes mc-slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+  @keyframes mc-slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes mc-slide-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-14);
+    line-height: 1.5;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 17%, transparent);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scrollbar) transparent;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  :disabled {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
