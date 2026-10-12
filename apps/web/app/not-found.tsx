@@ -7,11 +7,11 @@ export default function NotFound() {
       <BrandLockup height={28} />
       <EmptyState
         title="This page is not available"
-        description="Return to your workspace to keep going."
+        description="Return to your organisation to keep going."
         headingLevel={2}
         action={
           <Button variant="primary" asChild>
-            <Link href="/home">Go to Home</Link>
+            <Link href="/select-organisation">Go to MateCollab</Link>
           </Button>
         }
       />

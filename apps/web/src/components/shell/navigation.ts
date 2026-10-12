@@ -18,14 +18,20 @@ import {
   Palette,
   Reply,
   Share2,
+  ShieldCheck,
+  UserRound,
+  UserRoundPlus,
+  UsersRound,
   Video,
   type LucideIcon,
 } from 'lucide-react';
 
-export type ModuleId = 'home' | 'chats' | 'spaces' | 'meetings' | 'files' | 'activity' | 'settings';
+// Paths here are relative to the organisation: the shell prefixes them with /{org}.
+
+export type ModuleId = 'home' | 'chats' | 'spaces' | 'meetings' | 'files' | 'activity' | 'settings' | 'admin';
 
 export interface RailModule {
-  id: Exclude<ModuleId, 'settings'>;
+  id: Exclude<ModuleId, 'settings' | 'admin'>;
   label: string;
   href: string;
   icon: LucideIcon;
@@ -49,15 +55,17 @@ export const moduleLabels: Record<ModuleId, string> = {
   files: 'Files',
   activity: 'Activity',
   settings: 'Settings',
+  admin: 'Administration',
 };
 
 const homePaths = ['/home', '/actions', '/saved', '/support'];
 
-/** Which rail module owns a path (Home also owns its sub-pages). */
+/** Which module owns an organisation-relative path (Home also owns its sub-pages). */
 export function moduleFor(pathname: string): ModuleId {
   const first = `/${pathname.split('/')[1] ?? ''}`;
   if (homePaths.includes(first)) return 'home';
   if (first === '/settings') return 'settings';
+  if (first === '/admin') return 'admin';
   const match = railModules.find((m) => m.href === first);
   return match?.id ?? 'home';
 }
@@ -131,9 +139,23 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
   settings: {
     title: 'Personal settings',
     links: [
+      { label: 'Profile', href: '/settings/profile', path: '/settings/profile', icon: UserRound },
+      {
+        label: 'Sign-in and security',
+        href: '/settings/security',
+        path: '/settings/security',
+        icon: ShieldCheck,
+      },
       { label: 'Appearance', href: '/settings/appearance', path: '/settings/appearance', icon: Palette },
     ],
-    note: 'Profile, notification and security settings arrive with sign-in.',
+  },
+  admin: {
+    title: 'Administration',
+    links: [
+      { label: 'Members', href: '/admin/members', path: '/admin/members', icon: UsersRound },
+      { label: 'Invitations', href: '/admin/invitations', path: '/admin/invitations', icon: UserRoundPlus },
+      { label: 'Security policy', href: '/admin/security', path: '/admin/security', icon: ShieldCheck },
+    ],
   },
 };
 

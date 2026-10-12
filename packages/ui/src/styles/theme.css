@@ -146,6 +146,11 @@
   --text-28--line-height: 1.25;
   --text-32: 2rem;
   --text-32--line-height: 1.2;
+  /* Display headline of the sign-in pages (prototype .login-story h1). */
+  --text-display-sm: 2.7rem;
+  --text-display-sm--line-height: 1.1;
+  --text-display: 3.4rem;
+  --text-display--line-height: 1.1;
 
   --font-weight-book: 450;
   --font-weight-strong: 550;
@@ -157,6 +162,7 @@
   --tracking-tight: -0.15px;
   --tracking-label: 1.1px;
   --tracking-eyebrow: 1.7px;
+  --tracking-display: -2px;
 
   /* ---- Shape -------------------------------------------------------------------------- */
   --radius-*: initial;

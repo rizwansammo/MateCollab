@@ -2,6 +2,7 @@
 
 import {
   AppFrame,
+  Avatar,
   Breadcrumb,
   BrandLockup,
   BrandMark,
@@ -18,6 +19,7 @@ import {
   GlobalBar,
   IconButton,
   Kbd,
+  OrgBadge,
   OrgSwitcherButton,
   Rail,
   RailItem,
@@ -32,13 +34,17 @@ import {
   useModifierKeyLabel,
   useShell,
 } from '@matecollab/ui';
+import type { OrganisationSummary } from '@matecollab/contracts';
 import {
+  ArrowLeftRight,
   Bell,
   CalendarDays,
+  Check,
   CircleHelp,
   Keyboard,
   Layers,
   LifeBuoy,
+  LogOut,
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
@@ -46,12 +52,17 @@ import {
   Plus,
   Search,
   Settings,
+  ShieldCheck,
   UserRound,
+  UsersRound,
 } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, type ReactNode } from 'react';
+import { useSession, useSignOut } from '@/features/auth/session';
+import { orgPath } from '@/features/org/org-context';
+import { isAdministrator, roleNames } from '@/features/org/roles';
 import { useRuntimeConfig } from '@/lib/api';
 import { SIDEBAR_WIDTH_COOKIE, writePreferenceCookie } from '@/lib/preferences';
 import { ConnectionStatus } from './connection-status';
@@ -64,20 +75,21 @@ import {
   type ModuleId,
 } from './navigation';
 
-/** Organisation slot until organisations and sign-in exist. */
-const ORGANISATION_PLACEHOLDER = 'Your organisation';
-
 export function AppShell({
+  org,
   initialSidebarWidth,
   children,
 }: {
+  org: OrganisationSummary;
   initialSidebarWidth: number;
   children: ReactNode;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const current = moduleFor(pathname);
+  // Navigation is defined relative to the organisation; the URL is /{org}/...
+  const subpath = pathname.slice(`/${org.slug}`.length) || '/';
+  const current = moduleFor(subpath);
   const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
   const [searchOpen, setSearchOpen] = useState(false);
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -107,18 +119,15 @@ export function AppShell({
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={setSidebarWidth}
         onSidebarWidthCommit={(width) => writePreferenceCookie(SIDEBAR_WIDTH_COOKIE, String(width))}
-        rail={<PrimaryRail current={current} helpOpen={panel === 'help'} onToggleHelp={toggleHelp} />}
+        rail={
+          <PrimaryRail org={org} current={current} helpOpen={panel === 'help'} onToggleHelp={toggleHelp} />
+        }
         header={
           <GlobalBar
             start={
               <>
                 <NavigationToggle />
-                <Breadcrumb
-                  items={[
-                    { label: ORGANISATION_PLACEHOLDER },
-                    { label: moduleLabels[current], current: true },
-                  ]}
-                />
+                <Breadcrumb items={[{ label: org.name }, { label: moduleLabels[current], current: true }]} />
               </>
             }
             center={<SearchTrigger onActivate={openSearch} />}
@@ -127,7 +136,7 @@ export function AppShell({
                 <QuickCreateMenu />
                 <Tooltip content="Activity">
                   <Link
-                    href="/activity"
+                    href={orgPath(org, '/activity') as Route}
                     aria-label="Activity"
                     className={cn(iconButtonVariants(), 'max-phone:hidden')}
                   >
@@ -138,7 +147,7 @@ export function AppShell({
             }
           />
         }
-        sidebar={<ContextSidebar current={current} pathname={pathname} search={viewParams} />}
+        sidebar={<ContextSidebar org={org} current={current} pathname={subpath} search={viewParams} />}
         panel={panel === 'help' ? <HelpPanel onClose={() => setPanel(null)} /> : null}
       >
         {children}
@@ -149,10 +158,12 @@ export function AppShell({
 }
 
 function PrimaryRail({
+  org,
   current,
   helpOpen,
   onToggleHelp,
 }: {
+  org: OrganisationSummary;
   current: ModuleId;
   helpOpen: boolean;
   onToggleHelp: () => void;
@@ -161,7 +172,7 @@ function PrimaryRail({
     <Rail
       brand={
         <Link
-          href="/home"
+          href={orgPath(org, '/home') as Route}
           aria-label="MateCollab home"
           className="inline-flex rounded-md p-1.5 transition-colors duration-140 hover:bg-rail-hover"
         >
@@ -183,7 +194,7 @@ function PrimaryRail({
           </IconButton>
           <Tooltip content="Settings" side="right">
             <Link
-              href="/settings/appearance"
+              href={orgPath(org, '/settings/profile') as Route}
               aria-label="Settings"
               aria-current={current === 'settings' ? 'page' : undefined}
               className={cn(
@@ -194,7 +205,7 @@ function PrimaryRail({
               <Settings aria-hidden />
             </Link>
           </Tooltip>
-          <AccountMenu onShowShortcuts={onToggleHelp} />
+          <AccountMenu org={org} onShowShortcuts={onToggleHelp} />
         </>
       }
     >
@@ -206,7 +217,7 @@ function PrimaryRail({
           label={item.label}
           active={current === item.id}
         >
-          <Link href={item.href as Route} />
+          <Link href={orgPath(org, item.href) as Route} />
         </RailItem>
       ))}
     </Rail>
@@ -222,26 +233,44 @@ function NavigationToggle() {
   );
 }
 
-function AccountMenu({ onShowShortcuts }: { onShowShortcuts: () => void }) {
+function AccountMenu({ org, onShowShortcuts }: { org: OrganisationSummary; onShowShortcuts: () => void }) {
+  const { user } = useSession();
+  const signOut = useSignOut();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Account"
+        aria-label={`Account: ${user.display_name}`}
         className="rounded-full outline-offset-2 transition-opacity duration-140 hover:opacity-90"
       >
-        <span className="inline-flex size-8.75 items-center justify-center rounded-full bg-white/10 text-rail-fg">
-          <UserRound className="size-5" aria-hidden />
-        </span>
+        <Avatar name={user.display_name} size={35} decorative />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end">
-        <DropdownMenuLabel>Not signed in</DropdownMenuLabel>
+      <DropdownMenuContent side="right" align="end" className="w-64">
+        <div className="px-2.5 py-2">
+          <span className="block truncate text-13 font-heading text-fg">{user.display_name}</span>
+          <span className="block truncate text-12 text-fg-muted">{user.primary_email}</span>
+        </div>
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/settings/appearance">
+          <Link href={orgPath(org, '/settings/profile') as Route}>
+            <UserRound aria-hidden /> Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={orgPath(org, '/settings/security') as Route}>
+            <ShieldCheck aria-hidden /> Sign-in and security
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={orgPath(org, '/settings/appearance') as Route}>
             <Palette aria-hidden /> Appearance
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onShowShortcuts}>
           <Keyboard aria-hidden /> Keyboard shortcuts
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => signOut.mutate()} disabled={signOut.isPending}>
+          <LogOut aria-hidden /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -257,7 +286,7 @@ function QuickCreateMenu() {
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Available after sign-in</DropdownMenuLabel>
+        <DropdownMenuLabel>Coming soon</DropdownMenuLabel>
         <DropdownMenuItem disabled>
           <MessageSquare aria-hidden /> New message
         </DropdownMenuItem>
@@ -277,10 +306,12 @@ function QuickCreateMenu() {
 }
 
 function ContextSidebar({
+  org,
   current,
   pathname,
   search,
 }: {
+  org: OrganisationSummary;
   current: ModuleId;
   pathname: string;
   search: URLSearchParams;
@@ -288,21 +319,7 @@ function ContextSidebar({
   const section = sidebarSections[current];
   return (
     <Sidebar
-      header={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <OrgSwitcherButton name={ORGANISATION_PLACEHOLDER} subtitle="Not signed in" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-60">
-            <DropdownMenuLabel>No organisation yet</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/settings/appearance">
-                <Settings aria-hidden /> Personal settings
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+      header={<OrganisationSwitcher org={org} />}
       footer={
         <>
           <ConnectionStatus />
@@ -320,7 +337,7 @@ function ContextSidebar({
             label={link.label}
             active={isLinkActive(link, pathname, search)}
           >
-            <Link href={link.href as Route} />
+            <Link href={orgPath(org, link.href) as Route} />
           </SidebarItem>
         ))}
       </nav>
@@ -328,6 +345,54 @@ function ContextSidebar({
         <p className="mx-2.5 mt-6 text-12 leading-[1.6] text-fg-muted">{section.note}</p>
       ) : null}
     </Sidebar>
+  );
+}
+
+/** Sidebar header: the current organisation, switching between memberships, administration. */
+function OrganisationSwitcher({ org }: { org: OrganisationSummary }) {
+  const { organisations } = useSession();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <OrgSwitcherButton
+          name={org.name}
+          subtitle={roleNames[org.role]}
+          aria-label={`Organisation: ${org.name}`}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-64">
+        <DropdownMenuLabel>Organisations</DropdownMenuLabel>
+        {organisations.map((o) => (
+          <DropdownMenuItem key={o.id} asChild>
+            <Link href={orgPath(o, '/home') as Route} aria-current={o.id === org.id ? 'true' : undefined}>
+              <OrgBadge name={o.name} className="size-5.5 text-11" />
+              <span className="min-w-0 flex-1 truncate">{o.name}</span>
+              {o.id === org.id ? <Check aria-hidden className="text-primary-ink" /> : null}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem asChild>
+          <Link href="/select-organisation">
+            <ArrowLeftRight aria-hidden /> All organisations
+          </Link>
+        </DropdownMenuItem>
+        {isAdministrator(org.role) ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={orgPath(org, '/admin/members') as Route}>
+                <UsersRound aria-hidden /> Members and invitations
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={orgPath(org, '/admin/security') as Route}>
+                <Settings aria-hidden /> Security policy
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

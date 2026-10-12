@@ -16,10 +16,7 @@ const config: NextConfig = {
   // The floating dev indicator would cover the rail's account button.
   devIndicators: false,
   async redirects() {
-    return [
-      { source: '/', destination: '/home', permanent: false },
-      { source: '/settings', destination: '/settings/appearance', permanent: false },
-    ];
+    return [{ source: '/', destination: '/select-organisation', permanent: false }];
   },
 };
 

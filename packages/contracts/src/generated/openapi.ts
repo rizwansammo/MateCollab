@@ -907,7 +907,7 @@ export interface components {
             email_id: components["schemas"]["Id"];
         };
         ResetPasswordRequest: {
-            /** @description 10–128 characters, not a common password and not the email address. */
+            /** @description 12–128 characters, not a common password and not the email address. */
             new_password: string;
             token: string;
         };

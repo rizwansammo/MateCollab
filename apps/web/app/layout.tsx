@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { brandValues } from '@/lib/brand-values';
 import { THEME_COOKIE, parseTheme } from '@/lib/preferences';
+import { QueryProvider } from '@/lib/query';
 
 export const metadata: Metadata = {
   title: { default: 'MateCollab', template: '%s · MateCollab' },
@@ -29,7 +30,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en-GB" data-theme={theme}>
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <QueryProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </QueryProvider>
         <Toaster />
       </body>
     </html>
