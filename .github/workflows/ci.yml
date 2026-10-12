@@ -1,0 +1,166 @@
+# Continuous integration (docs/development/TESTING.md). Third-party actions are pinned to commit
+# SHAs; the tag is noted beside each. Jobs only read the repository.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  GOTOOLCHAIN: auto
+
+jobs:
+  web:
+    name: Web, design system and contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Formatting
+        run: pnpm exec prettier --check .
+      - name: Lint (ESLint, Redocly)
+        run: pnpm -r --if-present lint
+      - name: Types
+        run: pnpm -r --if-present typecheck
+      - name: Unit tests
+        run: pnpm -r --if-present test
+      - name: Contracts generated and valid
+        run: pnpm contracts:check
+      - name: Brand assets match the Logo Library
+        run: pnpm brand:check
+      - name: Build web application
+        run: pnpm --filter @matecollab/web build
+      - name: Build Storybook
+        run: pnpm storybook:build
+
+  go:
+    name: Go services
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.6@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+        env:
+          POSTGRES_PASSWORD: ci-superuser
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+      valkey:
+        image: valkey/valkey:8.1.10-alpine@sha256:081c2f5cb575efc901aa80ff9cdbd1ec6a301682fd35e1ebb4b0990a4a4a8507
+        ports: ['6379:6379']
+      mailpit:
+        image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
+        ports: ['1025:1025', '8025:8025']
+    env:
+      MC_TEST_DATABASE_BOOTSTRAP_URL: postgres://postgres:ci-superuser@localhost:5432/postgres?sslmode=disable
+      MC_TEST_ROLE_PASSWORD: ci-role-password
+      MC_TEST_REDIS_URL: redis://localhost:6379/15
+      MC_TEST_MAILPIT_API: http://localhost:8025
+      MC_TEST_SMTP_HOST: localhost
+      MC_TEST_SMTP_PORT: '1025'
+      # Object-storage tests need MinIO, which is built locally (ADR-010); they skip here and run
+      # with `pnpm test:go:integration` on developer machines.
+    defaults:
+      run:
+        working-directory: services
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+      - name: Formatting
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: Vet
+        run: go vet ./... && go vet -tags integration ./...
+      - name: Unit and contract tests
+        run: go test -race -count=1 ./...
+      - name: Integration tests (PostgreSQL, Valkey, Mailpit)
+        run: go test -tags integration -race -count=1 -p 1 ./...
+      - name: Build binaries
+        run: go build -trimpath -o bin/ ./api ./worker ./mcctl
+      - name: Known vulnerabilities (govulncheck)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+  visual:
+    name: Visual regression and accessibility (Storybook)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Light and dark baselines + axe (WCAG 2.2 AA) in the pinned Playwright image
+        run: pnpm visual:test
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: visual-report
+          path: packages/ui/visual/.results
+          retention-days: 14
+
+  security:
+    name: Secrets, dependencies and licences
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Secret scanning (gitleaks, full history)
+        run: >-
+          docker run --rm -v "$PWD:/repo" -w /repo
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git --redact --no-banner /repo
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+      - run: pnpm install --frozen-lockfile
+      - name: npm advisories (high and critical fail)
+        run: pnpm audit --audit-level high
+      - name: Licence policy
+        run: pnpm licenses
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  images:
+    name: Container images build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Go images (api, worker, mcctl)
+        run: |
+          for target in api worker mcctl; do
+            docker build -f infra/docker/go.Dockerfile --target "$target" -t "matecollab/$target:ci" .
+          done
+      - name: Web image
+        run: docker build -f infra/docker/web.Dockerfile -t matecollab/web:ci .

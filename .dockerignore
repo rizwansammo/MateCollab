@@ -1,0 +1,17 @@
+# Build contexts never include secrets, dependencies or build output.
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.next
+**/storybook-static
+**/coverage
+**/*.tsbuildinfo
+**/.cache
+services/bin
+services/tmp
+packages/ui/visual/baseline
+packages/ui/visual/.results
+docs
+MateCollab-Logo-Library
