@@ -37,6 +37,7 @@
     "test:web": "pnpm -r --if-present test",
     "test:go": "node scripts/go.mjs test",
     "test:go:integration": "node scripts/go.mjs integration",
+    "test:e2e": "node apps/e2e/run.mjs",
     "contracts:check": "pnpm --filter @matecollab/contracts check",
     "build": "pnpm -r --if-present build && node scripts/go.mjs build",
     "storybook": "pnpm --filter @matecollab/ui storybook",

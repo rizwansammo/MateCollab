@@ -1,0 +1,19 @@
+{
+  "name": "@matecollab/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests of the running stack (http://localhost:8080) with Playwright and Mailpit",
+  "scripts": {
+    "e2e": "playwright test",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@matecollab/config": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.19.1",
+    "eslint": "^10.12.0",
+    "typescript": "~6.0.3"
+  }
+}

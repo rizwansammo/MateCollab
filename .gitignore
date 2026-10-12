@@ -54,3 +54,7 @@ pnpm-debug.log*
 # Written by `next dev` only when it detects an AI coding agent; not project files.
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
+
+# End-to-end run state (seeded IDs and reports)
+apps/e2e/suite/.seed.json
+apps/e2e/suite/.results/
