@@ -1,0 +1,50 @@
+{
+  "name": "matecollab",
+  "private": true,
+  "type": "module",
+  "description": "MateCollab — enterprise collaboration by NetaMate Solutions",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:docker": "node scripts/dev-docker.mjs",
+    "infra:up": "node scripts/infra.mjs up",
+    "infra:down": "node scripts/infra.mjs down",
+    "infra:reset": "node scripts/infra.mjs reset",
+    "infra:logs": "node scripts/infra.mjs logs",
+    "infra:ps": "node scripts/infra.mjs ps",
+    "mcctl": "node scripts/mcctl.mjs",
+    "doctor": "node scripts/mcctl.mjs doctor",
+    "db:bootstrap": "node scripts/mcctl.mjs db bootstrap",
+    "db:migrate": "node scripts/mcctl.mjs migrate up",
+    "db:rollback": "node scripts/mcctl.mjs migrate down",
+    "db:status": "node scripts/mcctl.mjs migrate status",
+    "db:psql": "node scripts/infra.mjs psql",
+    "gen": "pnpm --filter @matecollab/contracts gen",
+    "brand:sync": "node scripts/brand-sync.mjs",
+    "brand:check": "node scripts/brand-sync.mjs --check",
+    "format": "prettier --write . && node scripts/go.mjs fmt",
+    "format:check": "prettier --check . && node scripts/go.mjs fmt-check",
+    "lint": "pnpm -r --if-present lint && node scripts/go.mjs lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test && node scripts/go.mjs test",
+    "test:web": "pnpm -r --if-present test",
+    "test:go": "node scripts/go.mjs test",
+    "test:go:integration": "node scripts/go.mjs integration",
+    "contracts:check": "pnpm --filter @matecollab/contracts check",
+    "build": "pnpm -r --if-present build && node scripts/go.mjs build",
+    "storybook": "pnpm --filter @matecollab/ui storybook",
+    "storybook:build": "pnpm --filter @matecollab/ui build-storybook",
+    "visual:test": "pnpm --filter @matecollab/ui visual:test",
+    "visual:update": "pnpm --filter @matecollab/ui visual:update",
+    "licenses": "node scripts/check-licenses.mjs",
+    "audit:deps": "pnpm audit --audit-level high && node scripts/go.mjs vuln",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.0"
+  }
+}

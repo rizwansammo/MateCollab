@@ -1,0 +1,19 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Supply-chain policy (SECURITY-BASELINE.md §18): never install a version published less than
+# seven days ago, and only let explicitly approved packages run install scripts.
+minimumReleaseAge: 10080
+strictDepBuilds: true
+allowBuilds:
+  esbuild: true
+  sharp: true
+  "@tailwindcss/oxide": true
+  unrs-resolver: true
+
+# openapi-typescript 7 declares typescript ^5 but only uses the stable compiler factory API;
+# generation is verified under TypeScript 6 by `pnpm contracts:check`.
+peerDependencyRules:
+  allowedVersions:
+    openapi-typescript>typescript: "6"

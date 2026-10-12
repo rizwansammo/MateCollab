@@ -1,0 +1,53 @@
+# Local configuration and secrets — never commit.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+storybook-static/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
+# Go
+/services/bin/
+/services/tmp/
+*.test
+*.out
+
+# Local tooling state
+.tmp/
+.cache/
+.turbo/
+.eslintcache
+.vitest/
+test-results/
+playwright-report/
+packages/ui/visual/actual/
+packages/ui/visual/diff/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

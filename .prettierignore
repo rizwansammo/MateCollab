@@ -1,0 +1,21 @@
+# Prettier covers the TypeScript/JavaScript workspace. Go uses gofmt; docs and infra files are
+# formatted by hand.
+pnpm-lock.yaml
+node_modules
+.next
+dist
+storybook-static
+coverage
+*.md
+*.yml
+*.yaml
+*.sql
+*.html
+docs/
+infra/
+db/
+services/
+MateCollab-Logo-Library/
+apps/web/public/brand/
+packages/contracts/src/generated/
+packages/ui/visual/
