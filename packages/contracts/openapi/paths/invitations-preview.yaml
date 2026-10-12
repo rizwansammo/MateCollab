@@ -1,0 +1,27 @@
+post:
+  operationId: previewInvitation
+  summary: Describe an invitation to the holder of its link
+  description: Unknown, tampered or revoked links answer `404 invitation_invalid`.
+  tags:
+  - invitations
+  security:
+  - webClient: []
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/TokenRequest.yaml
+  responses:
+    '200':
+      description: The invitation.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/InvitationPreview.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

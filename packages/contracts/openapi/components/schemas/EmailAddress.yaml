@@ -1,0 +1,14 @@
+type: object
+additionalProperties: false
+required: [id, email, is_primary, verified_at, created_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  email:
+    type: string
+  is_primary:
+    type: boolean
+  verified_at:
+    $ref: ./NullableTimestamp.yaml
+  created_at:
+    $ref: ./Timestamp.yaml

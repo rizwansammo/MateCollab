@@ -1,0 +1,37 @@
+get:
+  operationId: listSessions
+  summary: List active sessions (devices)
+  tags:
+  - auth
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Active sessions, current first.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SessionList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+delete:
+  operationId: revokeOtherSessions
+  summary: Sign out every other session
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: Number of sessions revoked.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RevokedCount.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

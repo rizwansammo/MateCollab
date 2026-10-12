@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+required: [id, current, amr, created_at, last_seen_at, expires_at, ip, user_agent]
+properties:
+  id:
+    $ref: ./Id.yaml
+  current:
+    type: boolean
+  amr:
+    type: array
+    items:
+      type: string
+  created_at:
+    $ref: ./Timestamp.yaml
+  last_seen_at:
+    $ref: ./Timestamp.yaml
+  expires_at:
+    $ref: ./Timestamp.yaml
+  ip:
+    type: [string, 'null']
+  user_agent:
+    type: [string, 'null']

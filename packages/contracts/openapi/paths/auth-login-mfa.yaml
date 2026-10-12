@@ -1,0 +1,27 @@
+post:
+  operationId: loginMFA
+  summary: Complete sign-in with an authenticator or recovery code
+  description: Uses the `__Host-mc_mfa` challenge cookie from the password step. A wrong code answers `401 invalid_code`;
+    the fifth failure (or an expired challenge) answers `401 mfa_challenge_expired` and the user starts again. Codes
+    and recovery codes are single use.
+  tags:
+  - auth
+  security:
+  - webClient: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/MFALoginRequest.yaml
+  responses:
+    '200':
+      description: Signed in; the session cookie is set.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoginResponse.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

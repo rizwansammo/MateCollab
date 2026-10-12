@@ -1,0 +1,65 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: getSecuritySettings
+  summary: Get security settings
+  description: Requires `org.security.manage`.
+  tags:
+  - organisations
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Settings and version.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SecuritySettingsDocument.yaml
+      headers:
+        ETag:
+          description: Settings version; send it back in `If-Match`.
+          schema:
+            type: string
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+put:
+  operationId: updateSecuritySettings
+  summary: Replace security settings
+  description: Requires `org.security.manage`. Requiring two-step verification needs it on the caller's own account
+    first (`409 mfa_required_for_policy`).
+  tags:
+  - organisations
+  security:
+  - session: []
+    csrf: []
+  parameters:
+  - name: If-Match
+    in: header
+    required: true
+    description: The `ETag` of the version being replaced (`428` when missing, `412` when stale).
+    schema:
+      type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/SecuritySettings.yaml
+  responses:
+    '200':
+      description: Saved.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SecuritySettingsDocument.yaml
+      headers:
+        ETag:
+          description: Settings version; send it back in `If-Match`.
+          schema:
+            type: string
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

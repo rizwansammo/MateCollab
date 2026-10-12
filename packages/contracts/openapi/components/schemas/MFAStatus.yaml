@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [totp_enabled, recovery_codes_remaining]
+properties:
+  totp_enabled:
+    type: boolean
+  recovery_codes_remaining:
+    type: integer
+    minimum: 0

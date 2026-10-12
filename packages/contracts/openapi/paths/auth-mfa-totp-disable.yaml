@@ -1,0 +1,16 @@
+post:
+  operationId: disableTOTP
+  summary: Turn two-step verification off
+  description: Requires a recent password check.
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Disabled.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

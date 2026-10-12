@@ -1,0 +1,8 @@
+type: object
+description: A one-time token from an email link's URL fragment (never sent in a URL).
+additionalProperties: false
+required: [token]
+properties:
+  token:
+    type: string
+    maxLength: 128

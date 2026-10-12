@@ -1,0 +1,18 @@
+get:
+  operationId: getSession
+  summary: Get the current session document
+  tags:
+  - auth
+  security:
+  - session: []
+  responses:
+    '200':
+      description: The signed-in user, CSRF token, session and organisations.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SessionDocument.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -1,0 +1,18 @@
+get:
+  operationId: getMFAStatus
+  summary: Get two-step verification status
+  tags:
+  - auth
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Current second-factor state.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MFAStatus.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

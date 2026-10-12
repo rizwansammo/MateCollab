@@ -1,0 +1,61 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: listInvitations
+  summary: List invitations
+  tags:
+  - invitations
+  security:
+  - session: []
+  parameters:
+  - name: status
+    in: query
+    schema:
+      type: string
+      enum:
+      - pending
+  - $ref: ../components/parameters/Cursor.yaml
+  - $ref: ../components/parameters/Limit.yaml
+  responses:
+    '200':
+      description: Newest first.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/InvitationList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+post:
+  operationId: createInvitation
+  summary: Invite someone by email
+  description: Members need `org.members.invite`, Guests `org.guests.invite`, Admins `org.admins.manage`. Limited
+    to 30 per hour per inviter and 200 per day per organisation. Invitations expire after 7 days.
+  tags:
+  - invitations
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateInvitationRequest.yaml
+  responses:
+    '201':
+      description: Created; the invitation email is queued.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Invitation.yaml
+      headers:
+        Location:
+          description: URL of the created resource.
+          schema:
+            type: string
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

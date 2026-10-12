@@ -1,0 +1,5 @@
+type: string
+description: |
+  `active` members can use the organisation; `suspended` and `deactivated` members cannot.
+  Deactivated members stay in the directory for history.
+enum: [active, suspended, deactivated]

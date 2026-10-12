@@ -1,0 +1,21 @@
+post:
+  operationId: reauthenticate
+  summary: Confirm the password for a sensitive action
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ReauthenticateRequest.yaml
+  responses:
+    '204':
+      description: Confirmed for the next 10 minutes.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

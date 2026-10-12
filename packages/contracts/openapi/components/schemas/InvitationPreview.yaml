@@ -1,0 +1,20 @@
+type: object
+description: What the holder of an invitation link sees before accepting.
+additionalProperties: false
+required: [organisation, inviter_name, email, role, status, expires_at, account_exists]
+properties:
+  organisation:
+    $ref: ./OrganisationRef.yaml
+  inviter_name:
+    type: string
+  email:
+    type: string
+  role:
+    $ref: ./InvitableRole.yaml
+  status:
+    $ref: ./InvitationStatus.yaml
+  expires_at:
+    $ref: ./Timestamp.yaml
+  account_exists:
+    type: boolean
+    description: True when the invited address already has an account (sign in to accept).

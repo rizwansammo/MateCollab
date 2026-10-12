@@ -1,0 +1,19 @@
+post:
+  operationId: setupTOTP
+  summary: Start authenticator enrolment
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: A new secret to confirm with a code.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/TOTPSetup.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

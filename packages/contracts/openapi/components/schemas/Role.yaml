@@ -1,0 +1,5 @@
+type: string
+description: |
+  Organisation role. There is exactly one `owner`; ownership changes only by transfer.
+  Clients must tolerate unknown values.
+enum: [owner, admin, member, guest]

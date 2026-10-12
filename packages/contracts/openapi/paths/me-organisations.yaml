@@ -1,0 +1,18 @@
+get:
+  operationId: listMyOrganisations
+  summary: List my organisations
+  tags:
+  - organisations
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Organisations with an active membership.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/OrganisationList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

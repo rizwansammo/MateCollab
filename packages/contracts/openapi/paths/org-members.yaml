@@ -1,0 +1,38 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: listMembers
+  summary: List members (directory)
+  description: Requires `org.directory.view` (not Guests).
+  tags:
+  - members
+  security:
+  - session: []
+  parameters:
+  - name: role
+    in: query
+    schema:
+      $ref: ../components/schemas/Role.yaml
+  - name: status
+    in: query
+    schema:
+      $ref: ../components/schemas/MembershipStatus.yaml
+  - name: q
+    in: query
+    description: Matches name or contact email.
+    schema:
+      type: string
+      maxLength: 100
+  - $ref: ../components/parameters/Cursor.yaml
+  - $ref: ../components/parameters/Limit.yaml
+  responses:
+    '200':
+      description: One page.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MemberList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

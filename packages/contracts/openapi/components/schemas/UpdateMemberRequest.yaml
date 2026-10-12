@@ -1,0 +1,11 @@
+type: object
+description: |
+  Change another member's role and/or status. Nobody changes themselves or the Owner; only
+  the Owner grants, revokes or manages Admins; Owner is reached only by ownership transfer.
+additionalProperties: false
+minProperties: 1
+properties:
+  role:
+    $ref: ./Role.yaml
+  status:
+    $ref: ./MembershipStatus.yaml

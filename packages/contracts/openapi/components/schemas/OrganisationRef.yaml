@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required: [id, slug, name]
+properties:
+  id:
+    $ref: ./Id.yaml
+  slug:
+    type: string
+    description: URL name used in web addresses (`/{slug}/home`).
+  name:
+    type: string

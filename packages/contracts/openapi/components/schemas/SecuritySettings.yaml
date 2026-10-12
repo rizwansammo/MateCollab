@@ -1,0 +1,18 @@
+type: object
+description: The organisation's `security` settings section (replaced as a whole).
+additionalProperties: false
+required: [require_2fa, session_max_age, allow_guest_invites, invite_permission]
+properties:
+  require_2fa:
+    type: boolean
+    description: Members without two-step verification cannot use the organisation until they enrol.
+  session_max_age:
+    type: string
+    enum: [12h, 24h, 7d, 30d]
+    description: Absolute session age accepted for this organisation.
+  allow_guest_invites:
+    type: boolean
+  invite_permission:
+    type: string
+    enum: [admins, members]
+    description: Who may invite Members (Admins always can).

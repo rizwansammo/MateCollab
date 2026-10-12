@@ -1,0 +1,6 @@
+type: object
+additionalProperties: false
+properties:
+  theme:
+    type: string
+    enum: [light, dark, system]

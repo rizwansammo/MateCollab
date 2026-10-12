@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [code]
+properties:
+  code:
+    type: string
+    maxLength: 16

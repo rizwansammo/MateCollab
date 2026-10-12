@@ -1,0 +1,51 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: userId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+get:
+  operationId: getMember
+  summary: Get a member
+  description: Every member can read their own entry; others need `org.directory.view`.
+  tags:
+  - members
+  security:
+  - session: []
+  responses:
+    '200':
+      description: The member.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Member.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+patch:
+  operationId: updateMember
+  summary: Change a member's role or status
+  tags:
+  - members
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UpdateMemberRequest.yaml
+  responses:
+    '200':
+      description: Updated; access changes apply to the member's next request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Member.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

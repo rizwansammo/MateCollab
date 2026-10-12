@@ -1,0 +1,12 @@
+type: object
+description: Exactly one of `code` (authenticator app) or `recovery_code`.
+additionalProperties: false
+minProperties: 1
+maxProperties: 1
+properties:
+  code:
+    type: string
+    maxLength: 16
+  recovery_code:
+    type: string
+    maxLength: 32

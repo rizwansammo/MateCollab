@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [revoked]
+properties:
+  revoked:
+    type: integer
+    minimum: 0

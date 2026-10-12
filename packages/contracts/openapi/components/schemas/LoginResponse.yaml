@@ -1,0 +1,11 @@
+type: object
+description: |
+  Either a challenge (`mfa_required: true`, with the short-lived `__Host-mc_mfa` cookie set) or a
+  new session (cookie set, `session` included).
+additionalProperties: false
+required: [mfa_required]
+properties:
+  mfa_required:
+    type: boolean
+  session:
+    $ref: ./SessionDocument.yaml

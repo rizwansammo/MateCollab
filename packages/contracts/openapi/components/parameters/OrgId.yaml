@@ -1,0 +1,6 @@
+name: orgId
+in: path
+required: true
+description: Organisation ID. Organisations the caller does not belong to answer 404.
+schema:
+  $ref: ../schemas/Id.yaml

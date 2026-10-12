@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required: [name, slug]
+properties:
+  name:
+    type: string
+    maxLength: 100
+  slug:
+    type: string
+    description: 3–40 lowercase letters, numbers and single hyphens; some names are reserved.
+    maxLength: 40

@@ -1,0 +1,13 @@
+type: object
+description: Shown once during enrolment. The secret is only active after `/auth/mfa/totp/enable`.
+additionalProperties: false
+required: [secret, otpauth_uri, qr_code]
+properties:
+  secret:
+    type: string
+    description: Base32 secret for manual entry.
+  otpauth_uri:
+    type: string
+  qr_code:
+    type: string
+    description: PNG data URL of the otpauth URI.

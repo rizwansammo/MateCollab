@@ -1,0 +1,21 @@
+type: object
+description: The signed-in user's global profile (shared by every organisation they belong to).
+additionalProperties: false
+required: [id, display_name, timezone, locale, primary_email]
+properties:
+  id:
+    $ref: ./Id.yaml
+  display_name:
+    type: string
+    minLength: 1
+    maxLength: 80
+  timezone:
+    type: string
+    description: IANA time zone name.
+    examples: [Asia/Dhaka]
+  locale:
+    type: string
+    examples: [en-GB]
+  primary_email:
+    type: string
+    maxLength: 254

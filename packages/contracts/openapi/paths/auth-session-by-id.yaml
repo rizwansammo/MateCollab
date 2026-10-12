@@ -1,0 +1,21 @@
+delete:
+  operationId: revokeSession
+  summary: Sign out one session
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  parameters:
+  - name: sessionId
+    in: path
+    required: true
+    schema:
+      $ref: ../components/schemas/Id.yaml
+  responses:
+    '204':
+      description: Revoked. Sessions of other users answer 404.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

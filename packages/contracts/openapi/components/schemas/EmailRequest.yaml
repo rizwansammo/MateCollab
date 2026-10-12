@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [email]
+properties:
+  email:
+    type: string
+    maxLength: 254

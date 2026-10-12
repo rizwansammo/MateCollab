@@ -1,0 +1,43 @@
+get:
+  operationId: getMyPreferences
+  summary: Get my preferences
+  tags:
+  - account
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Preferences.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Preferences.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+patch:
+  operationId: updateMyPreferences
+  summary: Update my preferences
+  tags:
+  - account
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/PreferencesUpdate.yaml
+  responses:
+    '200':
+      description: Updated preferences.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Preferences.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

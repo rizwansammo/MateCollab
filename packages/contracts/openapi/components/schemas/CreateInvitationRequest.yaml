@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [email, role]
+properties:
+  email:
+    type: string
+    maxLength: 254
+  role:
+    $ref: ./InvitableRole.yaml

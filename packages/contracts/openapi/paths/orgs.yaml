@@ -1,0 +1,32 @@
+post:
+  operationId: createOrganisation
+  summary: Create an organisation
+  description: Only when self-service sign-up is enabled (`403 org_signup_disabled` otherwise). Operators create
+    organisations with `mcctl org create`.
+  tags:
+  - organisations
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateOrganisationRequest.yaml
+  responses:
+    '201':
+      description: Created; the caller is its Owner.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Organisation.yaml
+      headers:
+        Location:
+          description: URL of the created resource.
+          schema:
+            type: string
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

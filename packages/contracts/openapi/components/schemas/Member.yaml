@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+required: [user_id, display_name, role, status, title, email, joined_at, status_changed_at]
+properties:
+  user_id:
+    $ref: ./Id.yaml
+  display_name:
+    type: string
+  role:
+    $ref: ./Role.yaml
+  status:
+    $ref: ./MembershipStatus.yaml
+  title:
+    type: [string, 'null']
+  email:
+    type: [string, 'null']
+    description: The member's contact address for this organisation.
+  joined_at:
+    $ref: ./Timestamp.yaml
+  status_changed_at:
+    $ref: ./NullableTimestamp.yaml

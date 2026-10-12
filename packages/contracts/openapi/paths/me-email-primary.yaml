@@ -1,0 +1,22 @@
+put:
+  operationId: makeMyEmailPrimary
+  summary: Make a verified address primary
+  description: Requires a recent password check.
+  tags:
+  - account
+  security:
+  - session: []
+    csrf: []
+  parameters:
+  - name: emailId
+    in: path
+    required: true
+    schema:
+      $ref: ../components/schemas/Id.yaml
+  responses:
+    '204':
+      description: Primary address changed.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

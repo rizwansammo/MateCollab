@@ -1,0 +1,3 @@
+type: string
+description: Role an invitation grants. Nobody is invited as Owner.
+enum: [admin, member, guest]

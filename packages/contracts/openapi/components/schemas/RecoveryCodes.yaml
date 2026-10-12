@@ -1,0 +1,11 @@
+type: object
+description: Shown once. Each code works a single time.
+additionalProperties: false
+required: [recovery_codes]
+properties:
+  recovery_codes:
+    type: array
+    minItems: 10
+    maxItems: 10
+    items:
+      type: string

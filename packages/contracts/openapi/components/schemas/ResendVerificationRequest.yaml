@@ -1,0 +1,6 @@
+type: object
+additionalProperties: false
+required: [email_id]
+properties:
+  email_id:
+    $ref: ./Id.yaml

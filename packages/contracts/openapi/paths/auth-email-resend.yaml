@@ -1,0 +1,21 @@
+post:
+  operationId: resendVerification
+  summary: Resend a verification email
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ResendVerificationRequest.yaml
+  responses:
+    '202':
+      description: Queued.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

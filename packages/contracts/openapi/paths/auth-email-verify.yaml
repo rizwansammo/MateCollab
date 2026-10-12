@@ -1,0 +1,22 @@
+post:
+  operationId: verifyEmail
+  summary: Confirm an email address
+  tags:
+  - auth
+  security:
+  - webClient: []
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/TokenRequest.yaml
+  responses:
+    '204':
+      description: Verified.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -1,0 +1,29 @@
+post:
+  operationId: acceptInvitation
+  summary: Accept an invitation
+  description: 'Signed in: the account must own the invited address (`403 invitation_email_mismatch`). Signed out:
+    an existing account must sign in first (`401 sign_in_required`); otherwise an account is created. Used, expired
+    and invalid links answer `409 invitation_used`, `409 invitation_expired` and `404 invitation_invalid`.'
+  tags:
+  - invitations
+  security:
+  - webClient: []
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/AcceptInvitationRequest.yaml
+  responses:
+    '200':
+      description: Joined. For a new account the session cookie is set.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AcceptInvitationResponse.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

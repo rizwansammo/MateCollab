@@ -1,0 +1,20 @@
+type: object
+description: Security settings with the version to send back in `If-Match`.
+additionalProperties: false
+required: [require_2fa, session_max_age, allow_guest_invites, invite_permission, version, updated_at]
+properties:
+  require_2fa:
+    type: boolean
+  session_max_age:
+    type: string
+    enum: [12h, 24h, 7d, 30d]
+  allow_guest_invites:
+    type: boolean
+  invite_permission:
+    type: string
+    enum: [admins, members]
+  version:
+    type: integer
+    minimum: 0
+  updated_at:
+    $ref: ./Timestamp.yaml

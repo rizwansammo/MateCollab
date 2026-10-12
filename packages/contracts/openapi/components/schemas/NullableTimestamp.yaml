@@ -1,0 +1,3 @@
+type: [string, 'null']
+format: date-time
+description: RFC 3339 timestamp, or null when the event has not happened.

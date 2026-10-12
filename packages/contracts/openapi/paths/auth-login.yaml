@@ -1,0 +1,27 @@
+post:
+  operationId: login
+  summary: Sign in with email and password
+  description: Unknown email, wrong password and disabled accounts produce the same `401 invalid_credentials`. Limited
+    per address and per account (`429 rate_limited` with `Retry-After`), with a progressive delay after repeated
+    failures. A session the browser already holds is revoked.
+  tags:
+  - auth
+  security:
+  - webClient: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/LoginRequest.yaml
+  responses:
+    '200':
+      description: Signed in (session cookie set) or a second step is required (MFA cookie set).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoginResponse.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

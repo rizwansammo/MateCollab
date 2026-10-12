@@ -1,0 +1,26 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: invitationId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+post:
+  operationId: resendInvitation
+  summary: Send a fresh invitation link
+  tags:
+  - invitations
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: Resent; earlier links stop working and the expiry restarts.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Invitation.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [organisation, signed_in]
+properties:
+  organisation:
+    $ref: ./OrganisationRef.yaml
+  signed_in:
+    type: boolean
+    description: True when the browser now has a session (always, after creating an account).

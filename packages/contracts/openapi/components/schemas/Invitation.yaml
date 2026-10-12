@@ -1,0 +1,33 @@
+type: object
+description: An invitation as seen by organisation administrators (never includes the token).
+additionalProperties: false
+required: [id, email, role, status, invited_by, expires_at, last_sent_at, send_count, created_at, accepted_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  email:
+    type: string
+  role:
+    $ref: ./InvitableRole.yaml
+  status:
+    $ref: ./InvitationStatus.yaml
+  invited_by:
+    type: object
+    additionalProperties: false
+    required: [user_id, display_name]
+    properties:
+      user_id:
+        $ref: ./Id.yaml
+      display_name:
+        type: string
+  expires_at:
+    $ref: ./Timestamp.yaml
+  last_sent_at:
+    $ref: ./Timestamp.yaml
+  send_count:
+    type: integer
+    minimum: 1
+  created_at:
+    $ref: ./Timestamp.yaml
+  accepted_at:
+    $ref: ./NullableTimestamp.yaml

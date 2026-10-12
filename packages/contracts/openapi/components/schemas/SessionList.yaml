@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [data]
+properties:
+  data:
+    type: array
+    description: Active sessions, the current one first.
+    items:
+      $ref: ./SessionItem.yaml

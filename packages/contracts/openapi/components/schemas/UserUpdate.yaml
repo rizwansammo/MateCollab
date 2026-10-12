@@ -1,0 +1,13 @@
+type: object
+description: JSON Merge Patch of the profile; omitted fields are unchanged.
+additionalProperties: false
+properties:
+  display_name:
+    type: string
+    minLength: 1
+    maxLength: 80
+  timezone:
+    type: string
+    description: IANA time zone name.
+  locale:
+    type: string

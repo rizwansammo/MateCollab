@@ -1,0 +1,20 @@
+post:
+  operationId: regenerateRecoveryCodes
+  summary: Replace the recovery codes
+  description: Requires a recent password check.
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: New codes; earlier codes stop working.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RecoveryCodes.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

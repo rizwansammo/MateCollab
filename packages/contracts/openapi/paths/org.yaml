@@ -1,0 +1,46 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: getOrganisation
+  summary: Get the organisation profile
+  tags:
+  - organisations
+  security:
+  - session: []
+  responses:
+    '200':
+      description: The organisation.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Organisation.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+patch:
+  operationId: updateOrganisation
+  summary: Update the organisation profile
+  description: Requires `org.settings.manage`.
+  tags:
+  - organisations
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UpdateOrganisationRequest.yaml
+  responses:
+    '200':
+      description: Updated.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Organisation.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

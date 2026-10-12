@@ -1,0 +1,8 @@
+type: object
+description: Personal settings that follow the user across devices.
+additionalProperties: false
+required: [theme]
+properties:
+  theme:
+    type: string
+    enum: [light, dark, system]

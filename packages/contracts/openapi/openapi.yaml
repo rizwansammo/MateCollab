@@ -10,6 +10,10 @@ info:
 
     Within `/api/v1` changes are additive only. Clients must tolerate unknown fields and
     unknown enum values.
+
+    Tenant resources live under `/orgs/{orgId}`. The caller's membership is resolved before
+    any handler runs; organisations the caller does not belong to (and resources of other
+    organisations) answer `404`, never `403`.
   license:
     name: Proprietary
     identifier: LicenseRef-NetaMate-Proprietary
@@ -19,10 +23,114 @@ servers:
 tags:
   - name: platform
     description: Deployment metadata and runtime client configuration.
+  - name: auth
+    description: Sign-in, sessions, password recovery, email verification and two-step verification.
+  - name: account
+    description: The signed-in user's global profile, email addresses and preferences.
+  - name: organisations
+    description: Organisations, the organisation switcher and organisation settings.
+  - name: members
+    description: The member directory, roles and membership status.
+  - name: invitations
+    description: Invitations by email, from creation to acceptance.
 paths:
   /config:
     $ref: ./paths/config.yaml
+  /auth/login:
+    $ref: ./paths/auth-login.yaml
+  /auth/login/mfa:
+    $ref: ./paths/auth-login-mfa.yaml
+  /auth/logout:
+    $ref: ./paths/auth-logout.yaml
+  /auth/session:
+    $ref: ./paths/auth-session.yaml
+  /auth/password/forgot:
+    $ref: ./paths/auth-password-forgot.yaml
+  /auth/password/reset:
+    $ref: ./paths/auth-password-reset.yaml
+  /auth/password:
+    $ref: ./paths/auth-password.yaml
+  /auth/email/verify:
+    $ref: ./paths/auth-email-verify.yaml
+  /auth/email/resend:
+    $ref: ./paths/auth-email-resend.yaml
+  /auth/reauthenticate:
+    $ref: ./paths/auth-reauthenticate.yaml
+  /auth/sessions:
+    $ref: ./paths/auth-sessions.yaml
+  /auth/sessions/{sessionId}:
+    $ref: ./paths/auth-session-by-id.yaml
+  /auth/mfa:
+    $ref: ./paths/auth-mfa.yaml
+  /auth/mfa/totp/setup:
+    $ref: ./paths/auth-mfa-totp-setup.yaml
+  /auth/mfa/totp/enable:
+    $ref: ./paths/auth-mfa-totp-enable.yaml
+  /auth/mfa/totp/disable:
+    $ref: ./paths/auth-mfa-totp-disable.yaml
+  /auth/mfa/recovery-codes:
+    $ref: ./paths/auth-mfa-recovery-codes.yaml
+  /me:
+    $ref: ./paths/me.yaml
+  /me/emails:
+    $ref: ./paths/me-emails.yaml
+  /me/emails/{emailId}:
+    $ref: ./paths/me-email.yaml
+  /me/emails/{emailId}/primary:
+    $ref: ./paths/me-email-primary.yaml
+  /me/preferences:
+    $ref: ./paths/me-preferences.yaml
+  /me/organisations:
+    $ref: ./paths/me-organisations.yaml
+  /invitations/preview:
+    $ref: ./paths/invitations-preview.yaml
+  /invitations/accept:
+    $ref: ./paths/invitations-accept.yaml
+  /orgs:
+    $ref: ./paths/orgs.yaml
+  /orgs/{orgId}:
+    $ref: ./paths/org.yaml
+  /orgs/{orgId}/settings/security:
+    $ref: ./paths/org-settings-security.yaml
+  /orgs/{orgId}/members:
+    $ref: ./paths/org-members.yaml
+  /orgs/{orgId}/members/{userId}:
+    $ref: ./paths/org-member.yaml
+  /orgs/{orgId}/invitations:
+    $ref: ./paths/org-invitations.yaml
+  /orgs/{orgId}/invitations/{invitationId}:
+    $ref: ./paths/org-invitation.yaml
+  /orgs/{orgId}/invitations/{invitationId}/resend:
+    $ref: ./paths/org-invitation-resend.yaml
 components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-mc_session
+      description: Opaque session cookie (HttpOnly, Secure, SameSite=Lax). Never readable by scripts.
+    csrf:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: |
+        Required with the session on every POST, PUT, PATCH and DELETE, together with a
+        same-origin `Origin`. The value comes from `GET /auth/session`.
+    webClient:
+      type: apiKey
+      in: header
+      name: X-MC-Client
+      description: |
+        Pre-session CSRF guard for sign-in, recovery and invitation endpoints: the value `web`
+        plus a same-origin `Origin`. Cross-site pages cannot send it without a CORS preflight,
+        which the API never grants.
+  parameters:
+    OrgId:
+      $ref: ./components/parameters/OrgId.yaml
+    Cursor:
+      $ref: ./components/parameters/Cursor.yaml
+    Limit:
+      $ref: ./components/parameters/Limit.yaml
   schemas:
     RuntimeConfig:
       $ref: ./components/schemas/RuntimeConfig.yaml
@@ -34,8 +142,100 @@ components:
       $ref: ./components/schemas/Id.yaml
     Timestamp:
       $ref: ./components/schemas/Timestamp.yaml
+    NullableTimestamp:
+      $ref: ./components/schemas/NullableTimestamp.yaml
     PageInfo:
       $ref: ./components/schemas/PageInfo.yaml
+    Role:
+      $ref: ./components/schemas/Role.yaml
+    InvitableRole:
+      $ref: ./components/schemas/InvitableRole.yaml
+    MembershipStatus:
+      $ref: ./components/schemas/MembershipStatus.yaml
+    InvitationStatus:
+      $ref: ./components/schemas/InvitationStatus.yaml
+    OrganisationStatus:
+      $ref: ./components/schemas/OrganisationStatus.yaml
+    User:
+      $ref: ./components/schemas/User.yaml
+    UserUpdate:
+      $ref: ./components/schemas/UserUpdate.yaml
+    SessionDocument:
+      $ref: ./components/schemas/SessionDocument.yaml
+    LoginRequest:
+      $ref: ./components/schemas/LoginRequest.yaml
+    LoginResponse:
+      $ref: ./components/schemas/LoginResponse.yaml
+    MFALoginRequest:
+      $ref: ./components/schemas/MFALoginRequest.yaml
+    EmailRequest:
+      $ref: ./components/schemas/EmailRequest.yaml
+    TokenRequest:
+      $ref: ./components/schemas/TokenRequest.yaml
+    ResetPasswordRequest:
+      $ref: ./components/schemas/ResetPasswordRequest.yaml
+    ChangePasswordRequest:
+      $ref: ./components/schemas/ChangePasswordRequest.yaml
+    ResendVerificationRequest:
+      $ref: ./components/schemas/ResendVerificationRequest.yaml
+    ReauthenticateRequest:
+      $ref: ./components/schemas/ReauthenticateRequest.yaml
+    SessionItem:
+      $ref: ./components/schemas/SessionItem.yaml
+    SessionList:
+      $ref: ./components/schemas/SessionList.yaml
+    RevokedCount:
+      $ref: ./components/schemas/RevokedCount.yaml
+    MFAStatus:
+      $ref: ./components/schemas/MFAStatus.yaml
+    TOTPSetup:
+      $ref: ./components/schemas/TOTPSetup.yaml
+    CodeRequest:
+      $ref: ./components/schemas/CodeRequest.yaml
+    RecoveryCodes:
+      $ref: ./components/schemas/RecoveryCodes.yaml
+    EmailAddress:
+      $ref: ./components/schemas/EmailAddress.yaml
+    EmailAddressList:
+      $ref: ./components/schemas/EmailAddressList.yaml
+    Preferences:
+      $ref: ./components/schemas/Preferences.yaml
+    PreferencesUpdate:
+      $ref: ./components/schemas/PreferencesUpdate.yaml
+    OrganisationRef:
+      $ref: ./components/schemas/OrganisationRef.yaml
+    OrganisationSummary:
+      $ref: ./components/schemas/OrganisationSummary.yaml
+    OrganisationList:
+      $ref: ./components/schemas/OrganisationList.yaml
+    Organisation:
+      $ref: ./components/schemas/Organisation.yaml
+    CreateOrganisationRequest:
+      $ref: ./components/schemas/CreateOrganisationRequest.yaml
+    UpdateOrganisationRequest:
+      $ref: ./components/schemas/UpdateOrganisationRequest.yaml
+    SecuritySettings:
+      $ref: ./components/schemas/SecuritySettings.yaml
+    SecuritySettingsDocument:
+      $ref: ./components/schemas/SecuritySettingsDocument.yaml
+    Member:
+      $ref: ./components/schemas/Member.yaml
+    MemberList:
+      $ref: ./components/schemas/MemberList.yaml
+    UpdateMemberRequest:
+      $ref: ./components/schemas/UpdateMemberRequest.yaml
+    Invitation:
+      $ref: ./components/schemas/Invitation.yaml
+    InvitationList:
+      $ref: ./components/schemas/InvitationList.yaml
+    CreateInvitationRequest:
+      $ref: ./components/schemas/CreateInvitationRequest.yaml
+    InvitationPreview:
+      $ref: ./components/schemas/InvitationPreview.yaml
+    AcceptInvitationRequest:
+      $ref: ./components/schemas/AcceptInvitationRequest.yaml
+    AcceptInvitationResponse:
+      $ref: ./components/schemas/AcceptInvitationResponse.yaml
   responses:
     Problem:
       $ref: ./components/responses/Problem.yaml

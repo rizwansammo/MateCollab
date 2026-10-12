@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+required: [id, slug, name, status, default_timezone, default_locale, created_at, updated_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  slug:
+    type: string
+  name:
+    type: string
+    minLength: 1
+    maxLength: 100
+  status:
+    $ref: ./OrganisationStatus.yaml
+  default_timezone:
+    type: string
+  default_locale:
+    type: string
+  created_at:
+    $ref: ./Timestamp.yaml
+  updated_at:
+    $ref: ./Timestamp.yaml

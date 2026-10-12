@@ -1,0 +1,43 @@
+get:
+  operationId: getMe
+  summary: Get my profile
+  tags:
+  - account
+  security:
+  - session: []
+  responses:
+    '200':
+      description: The profile.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/User.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+patch:
+  operationId: updateMe
+  summary: Update my profile
+  tags:
+  - account
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/UserUpdate.yaml
+  responses:
+    '200':
+      description: The updated profile.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/User.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

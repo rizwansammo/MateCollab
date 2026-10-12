@@ -1,0 +1,25 @@
+post:
+  operationId: enableTOTP
+  summary: Confirm enrolment and turn two-step verification on
+  tags:
+  - auth
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CodeRequest.yaml
+  responses:
+    '200':
+      description: Enabled; recovery codes are shown once.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RecoveryCodes.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

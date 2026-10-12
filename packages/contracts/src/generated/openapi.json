@@ -4,7 +4,7 @@
     "title": "MateCollab API",
     "version": "0.1.0",
     "summary": "Same-origin REST API for the MateCollab web client.",
-    "description": "Conventions (naming, pagination, errors, idempotency, rate limits) are defined in\ndocs/api/API-DESIGN.md. This document is the source of truth for request and response\nshapes: TypeScript types are generated from it and the Go handlers are tested against it.\n\nWithin `/api/v1` changes are additive only. Clients must tolerate unknown fields and\nunknown enum values.\n",
+    "description": "Conventions (naming, pagination, errors, idempotency, rate limits) are defined in\ndocs/api/API-DESIGN.md. This document is the source of truth for request and response\nshapes: TypeScript types are generated from it and the Go handlers are tested against it.\n\nWithin `/api/v1` changes are additive only. Clients must tolerate unknown fields and\nunknown enum values.\n\nTenant resources live under `/orgs/{orgId}`. The caller's membership is resolved before\nany handler runs; organisations the caller does not belong to (and resources of other\norganisations) answer `404`, never `403`.\n",
     "license": {
       "name": "Proprietary",
       "identifier": "LicenseRef-NetaMate-Proprietary"
@@ -20,6 +20,26 @@
     {
       "name": "platform",
       "description": "Deployment metadata and runtime client configuration."
+    },
+    {
+      "name": "auth",
+      "description": "Sign-in, sessions, password recovery, email verification and two-step verification."
+    },
+    {
+      "name": "account",
+      "description": "The signed-in user's global profile, email addresses and preferences."
+    },
+    {
+      "name": "organisations",
+      "description": "Organisations, the organisation switcher and organisation settings."
+    },
+    {
+      "name": "members",
+      "description": "The member directory, roles and membership status."
+    },
+    {
+      "name": "invitations",
+      "description": "Invitations by email, from creation to acceptance."
     }
   ],
   "paths": {
@@ -84,9 +104,1702 @@
           }
         }
       }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Sign in with email and password",
+        "description": "Unknown email, wrong password and disabled accounts produce the same `401 invalid_credentials`. Limited per address and per account (`429 rate_limited` with `Retry-After`), with a progressive delay after repeated failures. A session the browser already holds is revoked.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "webClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in (session cookie set) or a second step is required (MFA cookie set).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/login/mfa": {
+      "post": {
+        "operationId": "loginMFA",
+        "summary": "Complete sign-in with an authenticator or recovery code",
+        "description": "Uses the `__Host-mc_mfa` challenge cookie from the password step. A wrong code answers `401 invalid_code`; the fifth failure (or an expired challenge) answers `401 mfa_challenge_expired` and the user starts again. Codes and recovery codes are single use.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "webClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MFALoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in; the session cookie is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Sign out of this session",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Signed out; the cookie is cleared."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Get the current session document",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The signed-in user, CSRF token, session and organisations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDocument"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "operationId": "forgotPassword",
+        "summary": "Request a password reset email",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "webClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. The response is the same whether or not the address has an account."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "operationId": "resetPassword",
+        "summary": "Set a new password with a reset or setup link",
+        "description": "Tokens are single use and expire (reset 60 minutes, account setup 72 hours). An invalid, used or expired token answers `422` with a `token` field error.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "webClient": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password set; every session of the account is revoked."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/password": {
+      "put": {
+        "operationId": "changePassword",
+        "summary": "Change the password",
+        "description": "Requires a recent password check (`403 reauthentication_required`).",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed; other sessions are revoked and this browser gets a new session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/email/verify": {
+      "post": {
+        "operationId": "verifyEmail",
+        "summary": "Confirm an email address",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "webClient": []
+          },
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Verified."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/email/resend": {
+      "post": {
+        "operationId": "resendVerification",
+        "summary": "Resend a verification email",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Queued."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/reauthenticate": {
+      "post": {
+        "operationId": "reauthenticate",
+        "summary": "Confirm the password for a sensitive action",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Confirmed for the next 10 minutes."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "summary": "List active sessions (devices)",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active sessions, current first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "revokeOtherSessions",
+        "summary": "Sign out every other session",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Number of sessions revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedCount"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "revokeSession",
+        "summary": "Sign out one session",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked. Sessions of other users answer 404."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/mfa": {
+      "get": {
+        "operationId": "getMFAStatus",
+        "summary": "Get two-step verification status",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current second-factor state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MFAStatus"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/mfa/totp/setup": {
+      "post": {
+        "operationId": "setupTOTP",
+        "summary": "Start authenticator enrolment",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A new secret to confirm with a code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TOTPSetup"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/mfa/totp/enable": {
+      "post": {
+        "operationId": "enableTOTP",
+        "summary": "Confirm enrolment and turn two-step verification on",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enabled; recovery codes are shown once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/mfa/totp/disable": {
+      "post": {
+        "operationId": "disableTOTP",
+        "summary": "Turn two-step verification off",
+        "description": "Requires a recent password check.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Disabled."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/auth/mfa/recovery-codes": {
+      "post": {
+        "operationId": "regenerateRecoveryCodes",
+        "summary": "Replace the recovery codes",
+        "description": "Requires a recent password check.",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New codes; earlier codes stop working.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Get my profile",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "summary": "Update my profile",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me/emails": {
+      "get": {
+        "operationId": "listMyEmails",
+        "summary": "List my email addresses",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Addresses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAddressList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addMyEmail",
+        "summary": "Add an email address",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Added unverified; a verification email is queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailAddress"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me/emails/{emailId}": {
+      "delete": {
+        "operationId": "removeMyEmail",
+        "summary": "Remove an email address",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "emailId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed. The primary address cannot be removed."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me/emails/{emailId}/primary": {
+      "put": {
+        "operationId": "makeMyEmailPrimary",
+        "summary": "Make a verified address primary",
+        "description": "Requires a recent password check.",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "emailId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Primary address changed."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me/preferences": {
+      "get": {
+        "operationId": "getMyPreferences",
+        "summary": "Get my preferences",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preferences.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMyPreferences",
+        "summary": "Update my preferences",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated preferences.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/me/organisations": {
+      "get": {
+        "operationId": "listMyOrganisations",
+        "summary": "List my organisations",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organisations with an active membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/invitations/preview": {
+      "post": {
+        "operationId": "previewInvitation",
+        "summary": "Describe an invitation to the holder of its link",
+        "description": "Unknown, tampered or revoked links answer `404 invitation_invalid`.",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "webClient": []
+          },
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The invitation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/invitations/accept": {
+      "post": {
+        "operationId": "acceptInvitation",
+        "summary": "Accept an invitation",
+        "description": "Signed in: the account must own the invited address (`403 invitation_email_mismatch`). Signed out: an existing account must sign in first (`401 sign_in_required`); otherwise an account is created. Used, expired and invalid links answer `409 invitation_used`, `409 invitation_expired` and `404 invitation_invalid`.",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "webClient": []
+          },
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Joined. For a new account the session cookie is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInvitationResponse"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs": {
+      "post": {
+        "operationId": "createOrganisation",
+        "summary": "Create an organisation",
+        "description": "Only when self-service sign-up is enabled (`403 org_signup_disabled` otherwise). Operators create organisations with `mcctl org create`.",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganisationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created; the caller is its Owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organisation"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of the created resource.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "getOrganisation",
+        "summary": "Get the organisation profile",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The organisation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organisation"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateOrganisation",
+        "summary": "Update the organisation profile",
+        "description": "Requires `org.settings.manage`.",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganisationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Organisation"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/settings/security": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "getSecuritySettings",
+        "summary": "Get security settings",
+        "description": "Requires `org.security.manage`.",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings and version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettingsDocument"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Settings version; send it back in `If-Match`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateSecuritySettings",
+        "summary": "Replace security settings",
+        "description": "Requires `org.security.manage`. Requiring two-step verification needs it on the caller's own account first (`409 mfa_required_for_policy`).",
+        "tags": [
+          "organisations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "The `ETag` of the version being replaced (`428` when missing, `412` when stale).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecuritySettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettingsDocument"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Settings version; send it back in `If-Match`.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/members": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "listMembers",
+        "summary": "List members (directory)",
+        "description": "Requires `org.directory.view` (not Guests).",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/Role"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MembershipStatus"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Matches name or contact email.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/members/{userId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        },
+        {
+          "name": "userId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getMember",
+        "summary": "Get a member",
+        "description": "Every member can read their own entry; others need `org.directory.view`.",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMember",
+        "summary": "Change a member's role or status",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated; access changes apply to the member's next request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/invitations": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "listInvitations",
+        "summary": "List invitations",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInvitation",
+        "summary": "Invite someone by email",
+        "description": "Members need `org.members.invite`, Guests `org.guests.invite`, Admins `org.admins.manage`. Limited to 30 per hour per inviter and 200 per day per organisation. Invitations expire after 7 days.",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created; the invitation email is queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of the created resource.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/invitations/{invitationId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        },
+        {
+          "name": "invitationId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      ],
+      "delete": {
+        "operationId": "revokeInvitation",
+        "summary": "Revoke an invitation",
+        "description": "The inviter, or someone who manages members (Admins for Admin invitations).",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked (idempotent). Accepted invitations answer `409 invitation_used`."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/invitations/{invitationId}/resend": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        },
+        {
+          "name": "invitationId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "resendInvitation",
+        "summary": "Send a fresh invitation link",
+        "tags": [
+          "invitations"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resent; earlier links stop working and the expiry restarts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-mc_session",
+        "description": "Opaque session cookie (HttpOnly, Secure, SameSite=Lax). Never readable by scripts."
+      },
+      "csrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Required with the session on every POST, PUT, PATCH and DELETE, together with a\nsame-origin `Origin`. The value comes from `GET /auth/session`.\n"
+      },
+      "webClient": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-MC-Client",
+        "description": "Pre-session CSRF guard for sign-in, recovery and invitation endpoints: the value `web`\nplus a same-origin `Origin`. Cross-site pages cannot send it without a CORS preflight,\nwhich the API never grants.\n"
+      }
+    },
+    "parameters": {
+      "OrgId": {
+        "name": "orgId",
+        "in": "path",
+        "required": true,
+        "description": "Organisation ID. Organisations the caller does not belong to answer 404.",
+        "schema": {
+          "$ref": "#/components/schemas/Id"
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "description": "Opaque cursor from `page.next_cursor`; only valid with the same filters.",
+        "schema": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Page size (default 50).",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      }
+    },
     "schemas": {
       "RuntimeConfig": {
         "type": "object",
@@ -297,6 +2010,14 @@
           "2026-10-12T09:14:03.120Z"
         ]
       },
+      "NullableTimestamp": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time",
+        "description": "RFC 3339 timestamp, or null when the event has not happened."
+      },
       "PageInfo": {
         "type": "object",
         "description": "Cursor pagination state returned next to `data` in list responses. Cursors are opaque,\nsigned and bound to the query's filters; offsets are never used.\n",
@@ -315,6 +2036,1027 @@
           },
           "has_more": {
             "type": "boolean"
+          }
+        }
+      },
+      "Role": {
+        "type": "string",
+        "description": "Organisation role. There is exactly one `owner`; ownership changes only by transfer.\nClients must tolerate unknown values.\n",
+        "enum": [
+          "owner",
+          "admin",
+          "member",
+          "guest"
+        ]
+      },
+      "InvitableRole": {
+        "type": "string",
+        "description": "Role an invitation grants. Nobody is invited as Owner.",
+        "enum": [
+          "admin",
+          "member",
+          "guest"
+        ]
+      },
+      "MembershipStatus": {
+        "type": "string",
+        "description": "`active` members can use the organisation; `suspended` and `deactivated` members cannot.\nDeactivated members stay in the directory for history.\n",
+        "enum": [
+          "active",
+          "suspended",
+          "deactivated"
+        ]
+      },
+      "InvitationStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "revoked",
+          "expired"
+        ]
+      },
+      "OrganisationStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "suspended",
+          "deleting"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "description": "The signed-in user's global profile (shared by every organisation they belong to).",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "display_name",
+          "timezone",
+          "locale",
+          "primary_email"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA time zone name.",
+            "examples": [
+              "Asia/Dhaka"
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "examples": [
+              "en-GB"
+            ]
+          },
+          "primary_email": {
+            "type": "string",
+            "maxLength": 254
+          }
+        }
+      },
+      "UserUpdate": {
+        "type": "object",
+        "description": "JSON Merge Patch of the profile; omitted fields are unchanged.",
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA time zone name."
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionDocument": {
+        "type": "object",
+        "description": "Everything the web client needs at start-up. Never contains the session token.",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "csrf_token",
+          "session",
+          "mfa",
+          "organisations"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "csrf_token": {
+            "type": "string",
+            "description": "Send as `X-CSRF-Token` on every POST, PUT, PATCH and DELETE."
+          },
+          "session": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "amr",
+              "created_at",
+              "expires_at",
+              "idle_expires_at",
+              "reauthenticated_at"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "amr": {
+                "type": "array",
+                "description": "Authentication methods used, e.g. `pwd`, `totp`, `recovery`.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "created_at": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "expires_at": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "idle_expires_at": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "reauthenticated_at": {
+                "$ref": "#/components/schemas/Timestamp"
+              }
+            }
+          },
+          "mfa": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "totp_enabled"
+            ],
+            "properties": {
+              "totp_enabled": {
+                "type": "boolean"
+              }
+            }
+          },
+          "organisations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganisationSummary"
+            }
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "description": "Either a challenge (`mfa_required: true`, with the short-lived `__Host-mc_mfa` cookie set) or a\nnew session (cookie set, `session` included).\n",
+        "additionalProperties": false,
+        "required": [
+          "mfa_required"
+        ],
+        "properties": {
+          "mfa_required": {
+            "type": "boolean"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionDocument"
+          }
+        }
+      },
+      "MFALoginRequest": {
+        "type": "object",
+        "description": "Exactly one of `code` (authenticator app) or `recovery_code`.",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "maxProperties": 1,
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "recovery_code": {
+            "type": "string",
+            "maxLength": 32
+          }
+        }
+      },
+      "EmailRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "description": "A one-time token from an email link's URL fragment (never sent in a URL).",
+        "additionalProperties": false,
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "new_password": {
+            "type": "string",
+            "description": "10–128 characters, not a common password and not the email address.",
+            "maxLength": 1024
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "new_password"
+        ],
+        "properties": {
+          "new_password": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "ResendVerificationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email_id"
+        ],
+        "properties": {
+          "email_id": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      },
+      "ReauthenticateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "code": {
+            "type": "string",
+            "description": "Authenticator code; required when two-step verification is on.",
+            "maxLength": 16
+          }
+        }
+      },
+      "SessionItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "current",
+          "amr",
+          "created_at",
+          "last_seen_at",
+          "expires_at",
+          "ip",
+          "user_agent"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "amr": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "last_seen_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_agent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SessionList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "Active sessions, the current one first.",
+            "items": {
+              "$ref": "#/components/schemas/SessionItem"
+            }
+          }
+        }
+      },
+      "RevokedCount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revoked"
+        ],
+        "properties": {
+          "revoked": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "MFAStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "totp_enabled",
+          "recovery_codes_remaining"
+        ],
+        "properties": {
+          "totp_enabled": {
+            "type": "boolean"
+          },
+          "recovery_codes_remaining": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "TOTPSetup": {
+        "type": "object",
+        "description": "Shown once during enrolment. The secret is only active after `/auth/mfa/totp/enable`.",
+        "additionalProperties": false,
+        "required": [
+          "secret",
+          "otpauth_uri",
+          "qr_code"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "Base32 secret for manual entry."
+          },
+          "otpauth_uri": {
+            "type": "string"
+          },
+          "qr_code": {
+            "type": "string",
+            "description": "PNG data URL of the otpauth URI."
+          }
+        }
+      },
+      "CodeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16
+          }
+        }
+      },
+      "RecoveryCodes": {
+        "type": "object",
+        "description": "Shown once. Each code works a single time.",
+        "additionalProperties": false,
+        "required": [
+          "recovery_codes"
+        ],
+        "properties": {
+          "recovery_codes": {
+            "type": "array",
+            "minItems": 10,
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EmailAddress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "is_primary",
+          "verified_at",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "email": {
+            "type": "string"
+          },
+          "is_primary": {
+            "type": "boolean"
+          },
+          "verified_at": {
+            "$ref": "#/components/schemas/NullableTimestamp"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "EmailAddressList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmailAddress"
+            }
+          }
+        }
+      },
+      "Preferences": {
+        "type": "object",
+        "description": "Personal settings that follow the user across devices.",
+        "additionalProperties": false,
+        "required": [
+          "theme"
+        ],
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ]
+          }
+        }
+      },
+      "PreferencesUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ]
+          }
+        }
+      },
+      "OrganisationRef": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL name used in web addresses (`/{slug}/home`)."
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "OrganisationSummary": {
+        "type": "object",
+        "description": "An organisation the user is an active member of (organisation switcher).",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "status",
+          "role",
+          "joined_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrganisationStatus"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "joined_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "OrganisationList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganisationSummary"
+            }
+          }
+        }
+      },
+      "Organisation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "status",
+          "default_timezone",
+          "default_locale",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrganisationStatus"
+          },
+          "default_timezone": {
+            "type": "string"
+          },
+          "default_locale": {
+            "type": "string"
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "updated_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "CreateOrganisationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "slug"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "slug": {
+            "type": "string",
+            "description": "3–40 lowercase letters, numbers and single hyphens; some names are reserved.",
+            "maxLength": 40
+          }
+        }
+      },
+      "UpdateOrganisationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      },
+      "SecuritySettings": {
+        "type": "object",
+        "description": "The organisation's `security` settings section (replaced as a whole).",
+        "additionalProperties": false,
+        "required": [
+          "require_2fa",
+          "session_max_age",
+          "allow_guest_invites",
+          "invite_permission"
+        ],
+        "properties": {
+          "require_2fa": {
+            "type": "boolean",
+            "description": "Members without two-step verification cannot use the organisation until they enrol."
+          },
+          "session_max_age": {
+            "type": "string",
+            "enum": [
+              "12h",
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "description": "Absolute session age accepted for this organisation."
+          },
+          "allow_guest_invites": {
+            "type": "boolean"
+          },
+          "invite_permission": {
+            "type": "string",
+            "enum": [
+              "admins",
+              "members"
+            ],
+            "description": "Who may invite Members (Admins always can)."
+          }
+        }
+      },
+      "SecuritySettingsDocument": {
+        "type": "object",
+        "description": "Security settings with the version to send back in `If-Match`.",
+        "additionalProperties": false,
+        "required": [
+          "require_2fa",
+          "session_max_age",
+          "allow_guest_invites",
+          "invite_permission",
+          "version",
+          "updated_at"
+        ],
+        "properties": {
+          "require_2fa": {
+            "type": "boolean"
+          },
+          "session_max_age": {
+            "type": "string",
+            "enum": [
+              "12h",
+              "24h",
+              "7d",
+              "30d"
+            ]
+          },
+          "allow_guest_invites": {
+            "type": "boolean"
+          },
+          "invite_permission": {
+            "type": "string",
+            "enum": [
+              "admins",
+              "members"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "updated_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "Member": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_id",
+          "display_name",
+          "role",
+          "status",
+          "title",
+          "email",
+          "joined_at",
+          "status_changed_at"
+        ],
+        "properties": {
+          "user_id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The member's contact address for this organisation."
+          },
+          "joined_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "status_changed_at": {
+            "$ref": "#/components/schemas/NullableTimestamp"
+          }
+        }
+      },
+      "MemberList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Member"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        }
+      },
+      "UpdateMemberRequest": {
+        "type": "object",
+        "description": "Change another member's role and/or status. Nobody changes themselves or the Owner; only\nthe Owner grants, revokes or manages Admins; Owner is reached only by ownership transfer.\n",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "description": "An invitation as seen by organisation administrators (never includes the token).",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "email",
+          "role",
+          "status",
+          "invited_by",
+          "expires_at",
+          "last_sent_at",
+          "send_count",
+          "created_at",
+          "accepted_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/InvitableRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvitationStatus"
+          },
+          "invited_by": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "user_id",
+              "display_name"
+            ],
+            "properties": {
+              "user_id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "display_name": {
+                "type": "string"
+              }
+            }
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "last_sent_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "send_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "accepted_at": {
+            "$ref": "#/components/schemas/NullableTimestamp"
+          }
+        }
+      },
+      "InvitationList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        }
+      },
+      "CreateInvitationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "role"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "role": {
+            "$ref": "#/components/schemas/InvitableRole"
+          }
+        }
+      },
+      "InvitationPreview": {
+        "type": "object",
+        "description": "What the holder of an invitation link sees before accepting.",
+        "additionalProperties": false,
+        "required": [
+          "organisation",
+          "inviter_name",
+          "email",
+          "role",
+          "status",
+          "expires_at",
+          "account_exists"
+        ],
+        "properties": {
+          "organisation": {
+            "$ref": "#/components/schemas/OrganisationRef"
+          },
+          "inviter_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/InvitableRole"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvitationStatus"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "account_exists": {
+            "type": "boolean",
+            "description": "True when the invited address already has an account (sign in to accept)."
+          }
+        }
+      },
+      "AcceptInvitationRequest": {
+        "type": "object",
+        "description": "The organisation and role always come from the stored invitation; they cannot be supplied.\n`display_name` and `password` are required only when a new account is created.\n",
+        "additionalProperties": false,
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "AcceptInvitationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "organisation",
+          "signed_in"
+        ],
+        "properties": {
+          "organisation": {
+            "$ref": "#/components/schemas/OrganisationRef"
+          },
+          "signed_in": {
+            "type": "boolean",
+            "description": "True when the browser now has a session (always, after creating an account)."
           }
         }
       }

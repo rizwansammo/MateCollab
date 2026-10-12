@@ -1,0 +1,43 @@
+get:
+  operationId: listMyEmails
+  summary: List my email addresses
+  tags:
+  - account
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Addresses.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/EmailAddressList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+post:
+  operationId: addMyEmail
+  summary: Add an email address
+  tags:
+  - account
+  security:
+  - session: []
+    csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/EmailRequest.yaml
+  responses:
+    '201':
+      description: Added unverified; a verification email is queued.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/EmailAddress.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

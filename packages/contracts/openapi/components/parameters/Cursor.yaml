@@ -1,0 +1,7 @@
+name: cursor
+in: query
+required: false
+description: Opaque cursor from `page.next_cursor`; only valid with the same filters.
+schema:
+  type: string
+  maxLength: 1024

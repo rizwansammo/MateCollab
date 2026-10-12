@@ -1,0 +1,17 @@
+type: object
+description: An organisation the user is an active member of (organisation switcher).
+additionalProperties: false
+required: [id, slug, name, status, role, joined_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  slug:
+    type: string
+  name:
+    type: string
+  status:
+    $ref: ./OrganisationStatus.yaml
+  role:
+    $ref: ./Role.yaml
+  joined_at:
+    $ref: ./Timestamp.yaml

@@ -1,0 +1,23 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: invitationId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+delete:
+  operationId: revokeInvitation
+  summary: Revoke an invitation
+  description: The inviter, or someone who manages members (Admins for Admin invitations).
+  tags:
+  - invitations
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Revoked (idempotent). Accepted invitations answer `409 invitation_used`.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

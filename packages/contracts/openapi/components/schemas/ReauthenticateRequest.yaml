@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required: [password]
+properties:
+  password:
+    type: string
+    maxLength: 1024
+  code:
+    type: string
+    description: Authenticator code; required when two-step verification is on.
+    maxLength: 16

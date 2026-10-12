@@ -1,0 +1,21 @@
+delete:
+  operationId: removeMyEmail
+  summary: Remove an email address
+  tags:
+  - account
+  security:
+  - session: []
+    csrf: []
+  parameters:
+  - name: emailId
+    in: path
+    required: true
+    schema:
+      $ref: ../components/schemas/Id.yaml
+  responses:
+    '204':
+      description: Removed. The primary address cannot be removed.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
