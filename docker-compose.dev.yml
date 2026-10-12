@@ -1,0 +1,37 @@
+# Local development overrides. Every published port binds to 127.0.0.1 only.
+# The app is always opened at http://localhost:8080 (Nginx), never on the service ports below.
+
+services:
+  postgres:
+    ports: ["127.0.0.1:${MC_PG_HOST_PORT:-15432}:5432"]
+
+  valkey:
+    ports: ["127.0.0.1:${MC_REDIS_HOST_PORT:-6379}:6379"]
+
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"   # S3 API (browser presigned uploads/downloads)
+      - "127.0.0.1:9001:9001"   # console (inspection only)
+
+  livekit:
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:7881:7881"
+      - "127.0.0.1:7882:7882/udp"
+
+  mailpit:
+    ports:
+      - "127.0.0.1:8025:8025"   # web UI + API
+      - "127.0.0.1:1025:1025"   # SMTP
+
+  nginx:
+    ports: ["127.0.0.1:8080:8080"]
+
+  clamav:
+    ports: ["127.0.0.1:3310:3310"]
+
+  otel-lgtm:
+    ports:
+      - "127.0.0.1:3001:3000"   # Grafana
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:4318:4318"   # OTLP HTTP

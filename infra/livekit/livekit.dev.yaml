@@ -1,0 +1,18 @@
+# LiveKit configuration for local development only.
+# API keys are injected through the LIVEKIT_KEYS environment variable (see docker-compose.dev.yml),
+# so no secret lives in this file. Production LiveKit (TURN/TLS, public IP, port ranges) is
+# configured separately and is out of scope for local development.
+
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882          # single UDP port keeps Docker Desktop port mapping simple
+  use_external_ip: false
+  node_ip: 127.0.0.1      # advertise localhost to the browser running on the host
+room:
+  auto_create: false      # rooms are created only by the MateCollab API (ADR-017)
+  empty_timeout: 300
+  departure_timeout: 20
+logging:
+  level: info
+  json: false

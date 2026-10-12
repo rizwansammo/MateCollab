@@ -106,7 +106,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Context.** The brief names MinIO for local development. The upstream `minio/minio` repository was archived on 25 April 2026 and marked "no longer maintained"; community container images stopped being published in October 2025.
 
-**Decision.** Code talks only to the S3 API (AWS SDK for Go v2, path-style addressing configurable). Local development keeps MinIO, **pinned to the last published community image**, bound to localhost only. Production storage is selected separately: a managed S3-compatible service (AWS S3, Cloudflare R2, Backblaze B2, Wasabi) or a maintained self-hosted alternative (e.g. SeaweedFS, Garage, Ceph RGW). Bucket creation and CORS are applied by `mcctl storage init`, not by MinIO-specific tooling.
+**Decision.** Code talks only to the S3 API (AWS SDK for Go v2, path-style addressing configurable). Local development keeps MinIO, bound to localhost only. *Implementation:* no community image is published any more, so `infra/docker/minio.Dockerfile` builds the final community source release (`RELEASE.2025-10-15T17-29-55Z`, tag verified against its commit) locally. Production storage is selected separately: a managed S3-compatible service (AWS S3, Cloudflare R2, Backblaze B2, Wasabi) or a maintained self-hosted alternative (e.g. SeaweedFS, Garage, Ceph RGW). Bucket creation and CORS are applied by `mcctl storage init`, not by MinIO-specific tooling.
 
 **Consequences.** No vendor lock-in; local dev unchanged. Decision needed: approve MinIO-for-dev-only and choose the production storage provider before Phase 12.
 

@@ -180,8 +180,8 @@ Rename/delete: uploader; delete any: organisation Owner/Admin (audit-logged).
 
 ## 10. Local development (MinIO)
 
-* MinIO's upstream repository is archived; local development uses the **last published community image, pinned by digest**, bound to `127.0.0.1` only. See [ADR-010](DECISIONS.md#adr-010--object-storage--accepted).
-* `mcctl storage init` creates the bucket, lifecycle rules and (on providers that support it) bucket CORS limited to `MC_PUBLIC_URL`. MinIO uses its server-wide CORS setting, configured in Compose to the local app origin.
+* MinIO's upstream repository is archived and no community images are published any more; local development builds the **final community source release** locally (`infra/docker/minio.Dockerfile`, tag verified against its commit), bound to `127.0.0.1` only. See [ADR-010](DECISIONS.md#adr-010--object-storage--accepted).
+* `mcctl storage init` creates the bucket, lifecycle rules (abort incomplete multipart uploads after 1 day; expire `tmp/` after 1 day) and, on providers that support it, bucket CORS limited to `MC_PUBLIC_URL`. MinIO uses its server-wide CORS setting, configured in Compose to the local app origin, and rejects the multipart rule because it expires stale uploads itself — `storage init` then applies the `tmp/` rule alone and reports the skip.
 * Console (port 9001) is available for inspection; features of the community console were reduced in 2025 and are not relied upon.
 
 ---

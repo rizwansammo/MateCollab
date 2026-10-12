@@ -117,9 +117,17 @@ function hintFor(cmd) {
   return '';
 }
 
-// pnpm invokes pnpm through the shell on Windows, where it is a .cmd/.ps1 shim.
+// pnpm is a .cmd/.ps1 shim on Windows, so it runs through the shell there. Node deprecates
+// argument arrays with shell: true (DEP0190); callers only pass fixed, quote-free arguments.
+export function pnpmCommand(args) {
+  return IS_WINDOWS
+    ? { cmd: ['pnpm', ...args].join(' '), args: [], shell: true }
+    : { cmd: 'pnpm', args, shell: false };
+}
+
 export function pnpm(args, opts = {}) {
-  return run('pnpm', args, { ...opts, shell: IS_WINDOWS });
+  const { cmd, args: argv, shell } = pnpmCommand(args);
+  return run(cmd, argv, { ...opts, shell });
 }
 
 export function compose(args, opts = {}) {

@@ -1,0 +1,78 @@
+# MateCollab single origin: web pages, REST API and WebSocket on one host and port.
+# Rendered at container start by the nginx image (envsubst on defined variables only),
+# so nginx's own $variables are left untouched.
+
+map $http_upgrade $connection_upgrade {
+  default upgrade;
+  ''      close;
+}
+
+# Log the path without the query string: one-time tickets and tokens must never reach logs.
+log_format mc '$remote_addr [$time_local] "$request_method $uri $server_protocol" '
+              '$status $body_bytes_sent rt=$request_time rid=$request_id ua="$http_user_agent"';
+access_log /dev/stdout mc;
+error_log  /dev/stderr warn;
+
+server_tokens off;
+
+upstream mc_web {
+  server ${MC_NGINX_WEB_UPSTREAM};
+  keepalive 16;
+}
+
+upstream mc_api {
+  server ${MC_NGINX_API_UPSTREAM};
+  keepalive 16;
+}
+
+server {
+  listen 8080;
+  server_name _;
+
+  client_max_body_size 1m;   # file bytes go directly to object storage
+  # Guarantee nosniff on every response, including Nginx's own error pages, without
+  # duplicating the header the API and web app already send.
+  proxy_hide_header X-Content-Type-Options;
+  add_header X-Content-Type-Options nosniff always;
+
+  # Container health check only.
+  location = /nginx-health {
+    access_log off;
+    return 204;
+  }
+
+  # Realtime WebSocket gateway (implemented with messaging; the route is reserved now).
+  location = /api/v1/realtime {
+    include /etc/nginx/snippets/proxy-headers.conf;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 75s;
+    proxy_buffering off;
+    proxy_pass http://mc_api;
+  }
+
+  # REST API. Message routes accept up to 256 KB bodies (API-DESIGN.md §4).
+  location /api/ {
+    include /etc/nginx/snippets/proxy-headers.conf;
+    proxy_set_header Connection "";
+    client_max_body_size 256k;
+    proxy_read_timeout 30s;
+    proxy_pass http://mc_api;
+  }
+
+  # Immutable framework assets.
+  location /_next/static/ {
+    include /etc/nginx/snippets/proxy-headers.conf;
+    proxy_set_header Connection "";
+    proxy_pass http://mc_web;
+  }
+
+  # Pages (and the Next.js development HMR socket, which needs the upgrade headers).
+  location / {
+    include /etc/nginx/snippets/proxy-headers.conf;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 300s;
+    proxy_pass http://mc_web;
+  }
+}
