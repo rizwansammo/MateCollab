@@ -43,7 +43,7 @@ services/
 |---|---|---|
 | `api` | HTTP server (`/api/v1`), WebSocket gateway, LiveKit/HelpDesk webhooks; admin listener for `/healthz`, `/readyz`, `/metrics` on an internal port (`:8091` locally) | Stateless; scale horizontally |
 | `worker` | River workers and periodic jobs; admin listener (`:8092` locally) | Scale by queue; same domain code as `api` |
-| `mcctl` | `db bootstrap` (roles; needs admin credentials), `migrate up/down/status`, `seed` (dev only), `org create`, `user create-owner` (prints a one-time password-setup link), `storage init` (bucket, CORS, lifecycle), `keys rotate` (re-encrypt secrets), `config check` | Used in deployment steps and operations |
+| `mcctl` | Implemented: `prepare` (bootstrap when a superuser URL is set → `migrate up` → `storage init`; the deployment pre-start step), `db bootstrap` (roles; needs admin credentials), `migrate up/down/status`, `storage init` (bucket, CORS, lifecycle), `mail test`, `keys generate`, `config check`, `doctor`, `version`. Added with their features: `seed` (dev only), `org create`, `user create-owner` (prints a one-time password-setup link), `keys rotate` (re-encrypt secrets) | Used in deployment steps and operations |
 
 Module dependencies form a DAG: producers never import consumers. When a module needs another module to react (e.g. `notifications` reacting to a new message), the producer enqueues a job whose argument type lives in `jobargs`; the consumer registers the worker for that type. This keeps, for example, `messages` free of any import of `notifications`.
 
@@ -272,6 +272,9 @@ Configuration comes only from environment variables (and `*_FILE` variants for s
 | `MC_TRUSTED_PROXIES` | CIDRs allowed to set forwarding headers | Docker network CIDR |
 | `MC_DATABASE_URL` | Runtime role `mc_app` | `postgres://mc_app:…@postgres:5432/matecollab` |
 | `MC_MIGRATE_DATABASE_URL` | Migration role `mc_migrator` (mcctl only) | `postgres://mc_migrator:…@postgres:5432/matecollab` |
+| `MC_DATABASE_BOOTSTRAP_URL` | Superuser/admin URL for `mcctl db bootstrap` only; never given to the API or worker in production | `postgres://postgres:…@postgres:5432/postgres` |
+| `MC_MIGRATIONS_DIR` | Directory of goose SQL migrations (auto-discovered in a checkout) | `/app/db/migrations` in images |
+| `MC_DB_MAX_CONNS` | Pool size per process | `20` |
 | `MC_REDIS_URL` | Redis-compatible server | `redis://:…@redis:6379/0` |
 | `MC_S3_ENDPOINT` / `MC_S3_PUBLIC_ENDPOINT` | Internal endpoint / browser-reachable endpoint used for presigning | `http://minio:9000` / `http://localhost:9000` |
 | `MC_S3_REGION`, `MC_S3_BUCKET`, `MC_S3_ACCESS_KEY_ID`, `MC_S3_SECRET_ACCESS_KEY`, `MC_S3_FORCE_PATH_STYLE` | Object storage | `us-east-1`, `matecollab`, …, `true` |
@@ -282,7 +285,8 @@ Configuration comes only from environment variables (and `*_FILE` variants for s
 | `MC_HMAC_SECRET` | Root for HKDF-derived subkeys for **ephemeral** values only (CSRF tokens, pagination cursors, WebSocket tickets); rotating it invalidates those values, which clients simply re-fetch | generated |
 | `MC_SCANNER`, `MC_CLAMAV_ADDR` | `clamav` or `noop` (non-production only) | `noop` / `clamav:3310` |
 | `MC_OTEL_EXPORTER_OTLP_ENDPOINT` | Traces/metrics export | `http://otel-lgtm:4318` (optional) |
-| `MC_LOG_LEVEL`, `MC_LOG_FORMAT` | `debug`…`error`; `json` or `text` | `debug`, `text` |
+| `MC_LOG_LEVEL`, `MC_LOG_FORMAT` | `debug`…`error`; `json` or `text` | `info`, `json` (`.env` uses `text` locally) |
+| `MC_MAX_UPLOAD_MB` | Platform upload ceiling (organisations can only lower it) | `100` |
 | `MC_ALLOW_ORG_SIGNUP` | Self-service organisation creation | `false` |
 | `MC_OUTBOUND_ALLOW_PRIVATE_CIDRS` | SSRF allow-list for on-premises SMTP/HelpDesk endpoints | empty |
 

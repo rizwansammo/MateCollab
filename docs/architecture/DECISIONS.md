@@ -180,9 +180,9 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Context.** Go supports the two most recent major releases. Go 1.27 shipped in August 2026, ending security support for Go 1.25; the development machine currently has Go 1.25.14.
 
-**Decision.** Target Go 1.27 (the `go` directive and toolchain are pinned in Phase 1); CI tests the pinned version; Renovate proposes upgrades when a new major release appears.
+**Decision.** Target Go 1.27: `services/go.mod` declares `go 1.27.0` and `toolchain go1.27.2`; CI tests the pinned version; Renovate proposes upgrades when a new major release appears.
 
-**Consequences.** The development machine must be upgraded before Phase 1.
+**Consequences.** *Implementation:* no machine-wide upgrade is needed. Any installed Go ≥ 1.21 reads the toolchain directive and downloads the checksum-verified Go 1.27.2 toolchain into the module cache (`GOTOOLCHAIN=auto`); the container build uses `golang:1.27-alpine` with `GOTOOLCHAIN=local`.
 
 ---
 

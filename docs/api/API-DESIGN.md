@@ -96,18 +96,18 @@ RFC 9457 Problem Details, `Content-Type: application/problem+json`:
 
 ```json
 {
-  "type": "https://docs.matecollab.app/errors/validation_failed",
+  "type": "urn:matecollab:problem:validation_failed",
   "title": "Request validation failed",
   "status": 422,
   "code": "validation_failed",
   "detail": "One or more fields are invalid.",
   "instance": "/api/v1/orgs/0199…/spaces",
-  "request_id": "req_01J9Z…",
+  "request_id": "870315265bf4066afd97af34d5e4fd7c",
   "errors": [ { "field": "name", "code": "too_long", "message": "Use 80 characters or fewer." } ]
 }
 ```
 
-(`type` URIs are placeholders until the documentation domain is chosen.)
+`type` is always `urn:matecollab:problem:<code>`: stable, resolvable without a documentation domain, and equal to `code` after the prefix. `request_id` matches the `X-Request-ID` response header (Nginx generates it; the API accepts it when well-formed and creates one otherwise). The schema is `ProblemDetails` in `packages/contracts/openapi`.
 
 | Status | `code` examples |
 |---|---|
