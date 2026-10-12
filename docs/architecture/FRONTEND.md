@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Status: Foundation implemented (tokens, primitives, shell, theming; see §15) · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--accepted), [ADR-009](DECISIONS.md#adr-009--typography)
+Status: Foundation, sign-in and organisation screens implemented (see §15) · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--accepted), [ADR-009](DECISIONS.md#adr-009--typography)
 
 The production web app must **faithfully preserve the approved MateCollab-UI visual language** — adaptive three-panel layout, premium restrained styling, light and dark parity — while replacing the prototype's simulation internals with production architecture.
 
@@ -37,7 +37,7 @@ The production web app must **faithfully preserve the approved MateCollab-UI vis
 apps/web/
 ├─ app/
 │  ├─ layout.tsx                         # <html>, Inter, theme bootstrap (nonce), providers
-│  ├─ (public)/login, login/mfa, forgot-password, reset-password,
+│  ├─ (auth)/login, login/mfa, login/recovery, forgot-password, reset-password,
 │  │            verify-email, invite          # one-time tokens read from the URL fragment (#token=…),
 │  │                                          # POSTed in the body; pages send Referrer-Policy: no-referrer
 │  ├─ (app)/select-organisation
@@ -170,7 +170,7 @@ Avoid: pill-shaped buttons, large radii, heavy shadows, gradients, generic dashb
 ## 7. Theming
 
 * Preferences: Light, Dark, System; density Comfortable/Compact; text size 16/18/20 (root font size; everything in `rem`); reduced motion; "always show message actions".
-* Server-persisted in `user_preferences`, mirrored in a `mc_theme` cookie so the server renders the correct `data-theme` (`light`, `dark` or `system`). *Implemented without any script:* every colour token is a CSS `light-dark()` pair and `data-theme` only sets `color-scheme`, so "System" follows the OS in pure CSS before first paint (tokens use Tailwind `@theme inline` so nested `data-theme` scopes, such as theme previews, also resolve correctly). Until accounts exist, the cookie is the only store.
+* Server-persisted in `user_preferences`, mirrored in a `mc_theme` cookie so the server renders the correct `data-theme` (`light`, `dark` or `system`). *Implemented without any script:* every colour token is a CSS `light-dark()` pair and `data-theme` only sets `color-scheme`, so "System" follows the OS in pure CSS before first paint (tokens use Tailwind `@theme inline` so nested `data-theme` scopes, such as theme previews, also resolve correctly). The account copy (`/me/preferences`) wins once the session loads, so the choice follows the user to other devices.
 * `color-scheme` is set per theme so native controls and scrollbars match.
 
 ## 8. Component inventory
@@ -256,7 +256,10 @@ Emoji shortcodes (`:thumbsup:`) are converted to Unicode in the composer. Max 40
 | Shell | `packages/ui/src/shell` + `apps/web/src/components/shell` | `AppFrame` (rail, resizable sidebar with keyboard separator, global bar, right `ContextPanel`, tablet/phone drawer, phone bottom navigation, skip link), `Rail`/`RailItem`, `GlobalBar`/`Breadcrumb`, `Sidebar`/`SidebarItem`/`OrgSwitcherButton`, `Page`/`PageHeader`/`SectionTitle`. The web app composes them with routes; panels use `?panel=` (Help panel today) |
 | State patterns | `packages/ui/src/patterns/state-patterns.tsx` | The prototype's fifteen interaction-review states as one component and catalogue |
 | Theming | cookie `mc_theme` + `light-dark()` | Settings → Appearance switches immediately; sidebar width persists in `mc_sidebar_w` |
-| Routes | `/home`, `/actions`, `/saved`, `/support`, `/chats`, `/spaces`, `/meetings?view=`, `/files?view=`, `/activity?type=`, `/settings/appearance` | Unscoped until organisations exist; they move under `/{org}/` with membership. Pages show honest empty states, no sample data |
+| Routes | Public: `/login`, `/login/mfa`, `/login/recovery`, `/forgot-password`, `/reset-password`, `/verify-email`, `/invite`. Signed in: `/select-organisation`; `/{org}/home`, `/actions`, `/saved`, `/support`, `/chats`, `/spaces`, `/meetings?view=`, `/files?view=`, `/activity?type=`; `/{org}/settings/{profile,security,appearance}`; `/{org}/admin/{members,invitations,security}` | `proxy.ts` sends visitors without a session cookie to `/login?next=…`; `SessionGate` resolves the session with the API; `OrgShell` resolves `{org}` against the user's memberships (non-members see "Organisation not found", as the API answers 404) and shows the enrolment prompt when an organisation requires 2FA. Module pages still show honest empty states |
+| Sign-in screens | `apps/web/src/features/auth` | Prototype `.login-page` composition (brand bar, story column, form column; the prototype's faded mark motif is omitted because the Logo Library forbids altering the mark). One-time tokens are read from the URL fragment into memory and removed from the address bar; token pages send `Referrer-Policy: no-referrer` |
+| Server state | TanStack Query v5 + `openapi-fetch` typed client | Query keys for tenant data start with `['org', orgId]`. The client adds `X-MC-Client: web` to every request and `X-CSRF-Token` (memory only, looked up on demand) to unsafe ones; a 401 from any non-public query sends the user to sign-in |
+| Forms | react-hook-form + zod | Client validation is a courtesy; server field errors (`422`) are mapped onto the fields |
 | Storybook | `packages/ui` (`pnpm storybook`) | Light/Dark toolbar; every story is a visual baseline in both themes and is checked with axe (WCAG 2.2 AA) in a pinned Playwright container (`pnpm visual:test`) |
 | Accessibility linting | axe (Storybook stories and app pages) | `eslint-plugin-jsx-a11y` does not support ESLint 10; rendered-markup checks with axe replace it |
 | i18n | Not yet | Strings are inline in this foundation; next-intl and externalised strings arrive with the first product screens |

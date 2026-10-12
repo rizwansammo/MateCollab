@@ -1,6 +1,6 @@
 # REST API Design
 
-Status: Phase 0 proposal · Related: [ADR-013](../architecture/DECISIONS.md#adr-013--rest-conventions), [WEBSOCKET-EVENTS.md](WEBSOCKET-EVENTS.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
+Status: Implemented for authentication, account, organisations, members and invitations (§9.1–9.2, rows marked ✓; the OpenAPI document is authoritative); the rest is the Phase 0 proposal · Related: [ADR-013](../architecture/DECISIONS.md#adr-013--rest-conventions), [WEBSOCKET-EVENTS.md](WEBSOCKET-EVENTS.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
 
 The REST API is the only way clients read and change data. The WebSocket channel delivers events and ephemeral signals; it is not a write path for durable data.
 
@@ -67,7 +67,7 @@ Responses for unknown email, wrong password and disabled accounts are identical 
 | Unknown fields | Rejected (`422 validation_failed`) to catch client bugs early |
 | Body limits | 64 KB default; 256 KB for message create/edit (a 40,000-character message can exceed 120 KB in UTF-8, e.g. Bangla); other overrides documented per route |
 | Caching | `Cache-Control: no-store` on authenticated responses |
-| Optimistic concurrency | Mutable admin resources expose `version` and `ETag`; updates require `If-Match` → `412 version_mismatch` on conflict |
+| Optimistic concurrency | Mutable admin resources expose `version` and `ETag`; updates require `If-Match` → `412 version_mismatch` on conflict, `428 precondition_required` when missing |
 
 ### Message markup in JSON
 
@@ -117,6 +117,7 @@ RFC 9457 Problem Details, `Content-Type: application/problem+json`:
 | 404 | `not_found` (also for resources in other organisations or not visible) |
 | 409 | `conflict`, `name_taken`, `already_member`, `idempotency_conflict` |
 | 412 | `version_mismatch` |
+| 428 | `precondition_required` |
 | 413 | `payload_too_large`, `file_too_large` |
 | 415 | `unsupported_media_type` |
 | 422 | `validation_failed`, `idempotency_key_reused` |
@@ -157,30 +158,36 @@ Responses carry `RateLimit-Policy` and `RateLimit` headers (IETF draft format) a
 
 ### 9.1 Auth, account and session (Phase 2 unless noted)
 
+✓ = implemented and in `packages/contracts/openapi`. A test walks the router and fails if it serves anything undocumented or misses a documented operation.
+
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/v1/auth/login` | Password step |
-| POST | `/api/v1/auth/login/mfa` | TOTP or recovery code step |
-| POST | `/api/v1/auth/logout` | Revoke current session |
-| GET | `/api/v1/auth/session` | Current user, CSRF token, memberships summary |
-| POST | `/api/v1/auth/password/forgot` | Request reset email (uniform response) |
-| POST | `/api/v1/auth/password/reset` | `{token, new_password}` — token from the email link's URL fragment |
-| POST | `/api/v1/auth/email/verify` · `/resend` | `{token}` in the body · resend |
-| POST | `/api/v1/auth/reauthenticate` | Step-up (password, plus TOTP if enabled) |
-| GET / DELETE | `/api/v1/auth/sessions`, `/api/v1/auth/sessions/{id}` | List and revoke own sessions (incl. "sign out other sessions") |
-| POST | `/api/v1/auth/mfa/totp/setup` · `/enable` · `/disable` | Enrol (QR/secret), confirm, disable (step-up) |
-| POST | `/api/v1/auth/mfa/recovery-codes` | Regenerate (step-up; shown once) |
-| PUT | `/api/v1/auth/password` | Change password (step-up) |
-| GET / PATCH | `/api/v1/me` | Global profile (name, time zone, locale) |
-| GET / POST | `/api/v1/me/emails` | List own emails / add one (sends verification) |
-| PUT / DELETE | `/api/v1/me/emails/{id}/primary` · `/api/v1/me/emails/{id}` | Make primary (step-up) / remove |
-| GET / PATCH | `/api/v1/me/preferences` | Personal settings document |
-| GET | `/api/v1/me/organisations` | Memberships for the organisation switcher |
+| POST | `/api/v1/auth/login` | Password step ✓ |
+| POST | `/api/v1/auth/login/mfa` | TOTP or recovery code step ✓ |
+| POST | `/api/v1/auth/logout` | Revoke current session ✓ |
+| GET | `/api/v1/auth/session` | Current user, CSRF token, memberships summary ✓ |
+| POST | `/api/v1/auth/password/forgot` | Request reset email (uniform response) ✓ |
+| POST | `/api/v1/auth/password/reset` | `{token, new_password}` — token from the email link's URL fragment ✓ |
+| POST | `/api/v1/auth/email/verify` · `/resend` | `{token}` in the body · resend ✓ |
+| POST | `/api/v1/auth/reauthenticate` | Step-up (password, plus TOTP if enabled) ✓ |
+| GET / DELETE | `/api/v1/auth/sessions`, `/api/v1/auth/sessions/{id}` | List and revoke own sessions (incl. "sign out other sessions") ✓ |
+| POST | `/api/v1/auth/mfa/totp/setup` · `/enable` · `/disable` | Enrol (QR/secret), confirm, disable (step-up) ✓ |
+| POST | `/api/v1/auth/mfa/recovery-codes` | Regenerate (step-up; shown once) ✓ |
+| PUT | `/api/v1/auth/password` | Change password (step-up) ✓ |
+| GET / PATCH | `/api/v1/me` | Global profile (name, time zone, locale) ✓ |
+| GET / POST | `/api/v1/me/emails` | List own emails / add one (sends verification) ✓ |
+| PUT / DELETE | `/api/v1/me/emails/{id}/primary` · `/api/v1/me/emails/{id}` | Make primary (step-up) / remove ✓ |
+| GET / PATCH | `/api/v1/me/preferences` | Personal settings document ✓ |
+| GET | `/api/v1/me/organisations` | Memberships for the organisation switcher ✓ |
 | POST / DELETE | `/api/v1/me/deletion` | Request account deletion (step-up; grace period) / cancel |
 | PUT / DELETE | `/api/v1/me/avatar` | Avatar via upload ID (Phase 6) |
 | GET | `/api/v1/avatars/{userId}/{version}?size=64\|256` | Avatar image (authenticated; caller must share an organisation with the user); immutable caching (Phase 6) |
-| POST | `/api/v1/invitations/accept` | `{token, …}` in the body — accept invitation (creates the account if needed) |
-| POST | `/api/v1/orgs` | Self-service organisation creation (only when `MC_ALLOW_ORG_SIGNUP` is enabled) |
+| POST | `/api/v1/invitations/accept` | `{token, …}` in the body — accept invitation (creates the account if needed) ✓ |
+| POST | `/api/v1/orgs` | Self-service organisation creation (only when `MC_ALLOW_ORG_SIGNUP` is enabled) ✓ |
+| GET | `/api/v1/auth/mfa` | Two-step verification status and remaining recovery codes ✓ |
+| POST | `/api/v1/invitations/preview` | `{token}` in the body — organisation, inviter, role, status and whether the address already has an account, shown before accepting ✓ |
+
+Operators create organisations with `mcctl org create`: an existing account becomes the Owner; a new one is emailed a set-your-password link.
 
 Email links carry one-time tokens in the URL **fragment** (`/reset-password#token=…`, `/verify-email#token=…`, `/invite#token=…`), which browsers never send to servers or in `Referer` headers; those pages also send `Referrer-Policy: no-referrer`.
 
@@ -188,17 +195,18 @@ Email links carry one-time tokens in the URL **fragment** (`/reset-password#toke
 
 | Method | Path | Purpose | Permission |
 |---|---|---|---|
-| GET / PATCH | `{org}` | Organisation profile | view / `org.settings.manage` |
+| GET / PATCH | `{org}` | Organisation profile ✓ | view / `org.settings.manage` |
 | POST / DELETE | `{org}/deletion` | Request organisation deletion (step-up; 30-day window) / cancel | Owner |
 | GET | `{org}/logo/{version}` | Organisation logo image (immutable caching; Phase 6) | member |
 | PUT | `{org}/me/presence` | Own presence override and status text in this organisation | member |
 | PATCH | `{org}/me/membership` | Own title and contact email (one of the user's verified emails) | member |
-| GET / PUT | `{org}/settings/{section}` | `security`, `messaging`, `meetings`, `files`, `notifications`, `support` (ETag) | `org.settings.manage` / `org.security.manage` |
-| GET | `{org}/members` | Directory (filters: role, status, q) | `org.directory.view` |
-| GET / PATCH | `{org}/members/{userId}` | Role, status, title | `org.members.manage` / `org.admins.manage` |
+| GET / PUT | `{org}/settings/{section}` | `security` ✓ (ETag / `If-Match`; requiring 2FA needs it on the caller's own account first: `409 mfa_required_for_policy`); `messaging`, `meetings`, `files`, `notifications`, `support` arrive with their modules | `org.settings.manage` / `org.security.manage` |
+| GET | `{org}/members` | Directory (filters: role, status, q) ✓ | `org.directory.view` |
+| GET / PATCH | `{org}/members/{userId}` | Role and status ✓ (title via `{org}/me/membership`) | `org.members.manage` / `org.admins.manage` |
 | POST | `{org}/ownership-transfer` | Transfer to an Admin (step-up) | Owner |
-| GET / POST | `{org}/invitations` | List / create (member and admin invitations in Phase 2; guest invitations with `space_ids` in Phase 3) | `org.members.invite` / `org.guests.invite` |
-| DELETE | `{org}/invitations/{id}` | Revoke | inviter or Admin |
+| GET / POST | `{org}/invitations` | List (`status=pending`) / create ✓ — Admin, Member and Guest invitations; Space grants for Guests (`space_ids`) arrive with Spaces in Phase 3 | `org.admins.manage` / `org.members.invite` / `org.guests.invite` |
+| DELETE | `{org}/invitations/{id}` | Revoke ✓ (idempotent) | inviter or Admin |
+| POST | `{org}/invitations/{id}/resend` | New link: rotates the token and restarts the 7-day expiry ✓ | inviter or Admin |
 | GET | `{org}/audit-logs` | Filter by actor, action, target, time | `audit.view` |
 | POST | `{org}/audit-logs/exports` | Async CSV export → file download | `audit.export` |
 | GET | `{org}/admin/overview` | Counts, storage usage | Admin |

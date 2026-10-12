@@ -87,7 +87,20 @@ Three roles (see [DATABASE.md](../architecture/DATABASE.md) and [MULTITENANCY.md
 | SQL shell (superuser, `matecollab` database) | `pnpm db:psql` |
 | Delete all local data | `pnpm infra:reset --yes` (then `pnpm dev` recreates everything) |
 
-Migrations live in `db/migrations` (`YYYYMMDDHHMMSS_name.sql`, goose `-- +goose Up/Down`). Seed data and `pnpm db:seed` arrive with the first product data (authentication and organisations).
+Migrations live in `db/migrations` (`YYYYMMDDHHMMSS_name.sql`, goose `-- +goose Up/Down`). Queries live in `db/queries/<module>/*.sql`; `pnpm gen` (or `pnpm gen:sql`) regenerates the typed Go code in `services/internal/<module>/store` with sqlc from its pinned image, and `pnpm sql:check` fails when that code is stale.
+
+### First organisation and sign-in
+
+Self-service sign-up is off (`MC_ALLOW_ORG_SIGNUP=false`), so organisations are created by an operator:
+
+```sh
+pnpm mcctl org create --name "Acme Corporation" --slug acme --owner-email you@example.test --owner-name "Your Name"
+```
+
+* A new owner account receives a **set-your-password** email (open it in Mailpit, http://localhost:8025); the link works once and expires in 72 hours. An existing account simply becomes the Owner. `--print-setup-link` also prints the link (treat it like a password).
+* Sign in at http://localhost:8080 → you land on `/{slug}/home`. Invite people from **Administration → Invitations**; their invitation emails also arrive in Mailpit.
+* In Docker mode without Go installed: `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app run --rm --no-deps migrate org create …`.
+* Sign-in, recovery and invitation attempts are rate limited per client address. Locally every browser request arrives from the Docker gateway address, so heavy manual testing can hit the limits; `pnpm test:e2e` resets them before it runs.
 
 ## 6. Object storage (MinIO)
 
@@ -104,7 +117,7 @@ Migrations live in `db/migrations` (`YYYYMMDDHHMMSS_name.sql`, goose `-- +goose 
 
 ## 8. Email (Mailpit)
 
-* Every email is captured at **http://localhost:8025**. Send a test message: `pnpm mcctl mail test --to you@example.com`.
+* Every email is captured at **http://localhost:8025**: account setup, password reset, email verification, invitations and security notifications. The worker delivers them from the `email` queue, so they need the worker running. Send a test message: `pnpm mcctl mail test --to you@example.com`.
 * Organisation SMTP integrations created later in the local admin UI point to `mailpit:1025` (Docker) or `localhost:1025` (hybrid).
 
 ## 9. Malware scanning (optional)
@@ -134,12 +147,14 @@ Migrations live in `db/migrations` (`YYYYMMDDHHMMSS_name.sql`, goose `-- +goose 
 | `pnpm infra:up` · `infra:down` · `infra:reset --yes` · `infra:logs [svc]` · `infra:ps` | Infrastructure containers |
 | `pnpm db:*` | See §5 |
 | `pnpm doctor` | Connectivity and schema check of every dependency |
-| `pnpm mcctl …` | Operator CLI against local services (`config check`, `keys generate`, `mail test`, …) |
-| `pnpm gen` | OpenAPI and event schemas → bundled JSON + TypeScript types |
+| `pnpm mcctl …` | Operator CLI against local services (`org create`, `config check`, `keys generate`, `mail test`, …) |
+| `pnpm gen` | OpenAPI and event schemas → bundled JSON + TypeScript types; SQL queries → sqlc Go code (`gen:contracts` / `gen:sql` run one side) |
 | `pnpm format` · `format:check` | Prettier + gofmt |
 | `pnpm lint` · `pnpm typecheck` | ESLint, Redocly, `go vet` · TypeScript |
 | `pnpm test` | Web/contract unit tests + Go unit tests |
 | `pnpm test:go:integration` | Go integration tests (throwaway PostgreSQL container + local Valkey/MinIO/Mailpit) |
+| `pnpm test:e2e` | Playwright end-to-end flows and screenshots against the running stack |
+| `pnpm sql:check` | sqlc code is current |
 | `pnpm contracts:check` | Generated contract files fresh, OpenAPI lint, schema tests |
 | `pnpm storybook` · `storybook:build` | Design system and state catalogue |
 | `pnpm visual:test` · `visual:update` | Storybook visual baselines (light and dark) with axe checks |

@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status: Phase 0 approved (2026-10-12); production foundation and design system in progress. No phase starts without explicit approval of the previous one.
+Status: Phase 0 approved (2026-10-12); production foundation and design system complete; Phase 2 core (authentication, sessions, 2FA, organisations, memberships, invitations, RBAC, tenant isolation) implemented and awaiting review — the items not yet built are listed under Phase 2. No phase starts without explicit approval of the previous one.
 
 Each phase ends with: working software behind the documented exit criteria, green CI (including tenant-isolation, permission and security suites for everything the phase adds), updated documentation, and a phase report.
 
@@ -80,6 +80,8 @@ Scope:
 
 **Exit criteria:** tenant-isolation harness (schema/database/API suites) and permission matrix running in CI; authentication security tests (enumeration, throttling, CSRF, TOTP replay, session rotation/revocation) green; E2E for login + 2FA + reset + invitation.
 
+**Not yet built from this scope:** ownership transfer, `mcctl user create-owner`, account deletion requests, own title/contact email (`{org}/me/membership`), Settings → Privacy, Admin → General, Roles & Permissions and Audit Logs (events are recorded; there is no list/export endpoint yet), the `Idempotency-Key` store for invitation creation (duplicates are already refused by the pending-invitation constraint), and running the E2E suite in CI.
+
 ## Phase 3 — Spaces and channels
 
 Scope: Spaces (create, browse, join/leave, archive, delete, overview note), Space roles, **guest invitations with Space grants** (`invitation_space_grants` needs `spaces`) and guest access enforcement, channels as conversations (public/private, topic, default `#general`, archive), channel membership, Spaces sidebar tree, Space overview tabs (Overview, Channels, Members; Files/Meetings placeholders), Admin → Spaces and Messaging policy (Space creation settings), audit events, realtime-ready event constructors.
@@ -152,7 +154,7 @@ Scope: threat-model review, external penetration test and fixes, ZAP full scans,
 | **Search columns and indexes are created with their tables** (Phases 4 and 6); search UX stays in Phase 9 | Avoids large backfill migrations later |
 | **Home is assembled incrementally** and completed in Phase 9 (actions/support widgets in 10–11) | Home aggregates data from almost every module |
 | **Guest access is enforced in every phase** rather than as a separate step | Each feature must respect guest boundaries from day one |
-| **Guest invitations ship in Phase 3**, member/admin invitations in Phase 2 | Guest invitations carry Space grants, which reference `spaces` (Phase 3) |
+| **Guest invitations ship in Phase 2 without Space grants**; the grants (`space_ids`) ship in Phase 3 | The Guest role and its restrictions are enforced from Phase 2; Space grants reference `spaces` (Phase 3). Until then a Guest sees only the organisation profile and their own membership |
 | **Administration screens ship with their owning feature** | Settings are only meaningful once the feature exists |
 | **Phase 10 may merge** into Phase 9 or 11 | It is small and depends on notifications |
 

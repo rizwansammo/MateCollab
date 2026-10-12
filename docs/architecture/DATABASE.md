@@ -1,6 +1,6 @@
 # Database Architecture and Initial Data Model
 
-Status: Phase 0 proposal · Engine: PostgreSQL 18 · Related: [MULTITENANCY.md](MULTITENANCY.md), [ADR-003](DECISIONS.md#adr-003--postgresql-18-uuidv7-goose-sqlc--pgx), [ADR-006](DECISIONS.md#adr-006--normalised-conversation-model)
+Status: Implemented for identity and organisations (§4.1 identity, §4.2 organisations, memberships, settings, invitations and audit logs: `db/migrations/20261013*`); the rest is the Phase 0 proposal · Engine: PostgreSQL 18 · Related: [MULTITENANCY.md](MULTITENANCY.md), [ADR-003](DECISIONS.md#adr-003--postgresql-18-uuidv7-goose-sqlc--pgx), [ADR-006](DECISIONS.md#adr-006--normalised-conversation-model)
 
 The SQL in this document is a **design specification**. The authoritative schema is created by versioned goose migrations in `db/migrations/`, introduced phase by phase (see [PHASES.md](../development/PHASES.md)). Column lists may grow; the structural decisions (keys, tenancy, relationships, sequencing) are what Phase 0 fixes. All statements in this document parse with the PostgreSQL grammar and every foreign key has a matching unique target (checked during Phase 0).
 
@@ -157,8 +157,12 @@ CREATE TABLE user_emails (                                 -- RLS: owner only (c
   verified_at timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX user_emails_email_uq   ON user_emails (lower(email));
-CREATE UNIQUE INDEX user_emails_primary_uq ON user_emails (user_id) WHERE is_primary;
+-- Global uniqueness covers proven addresses (verified, or the primary set at account creation):
+-- an unverified secondary claim cannot block the real owner from signing up through an
+-- invitation, and fails with a unique violation if its holder later tries to verify it.
+CREATE UNIQUE INDEX user_emails_email_uq      ON user_emails (lower(email)) WHERE verified_at IS NOT NULL OR is_primary;
+CREATE UNIQUE INDEX user_emails_user_email_uq ON user_emails (user_id, lower(email));
+CREATE UNIQUE INDEX user_emails_primary_uq    ON user_emails (user_id) WHERE is_primary;
 
 CREATE TABLE user_credentials (
   user_id             uuid PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,

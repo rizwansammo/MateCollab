@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Status: Strategy + implemented foundation gates (see “Running the tests”) · Related: [PHASES.md](PHASES.md), [SECURITY-BASELINE.md](../security/SECURITY-BASELINE.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
+Status: Strategy + implemented gates for the foundation and for identity, organisations and invitations (see “Running the tests”) · Related: [PHASES.md](PHASES.md), [SECURITY-BASELINE.md](../security/SECURITY-BASELINE.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
 
 Tests are part of every phase's definition of done. A feature without its tenant-isolation and permission tests is not finished.
 
@@ -19,13 +19,30 @@ Tests are part of every phase's definition of done. A feature without its tenant
 | Command | What it runs | Needs |
 |---|---|---|
 | `pnpm check` | Every gate that needs no Docker, with a summary: Prettier, gofmt, ESLint + Redocly, `go vet` (default and `integration` build tags), TypeScript, Vitest (web, design system, contracts), Go unit + contract tests, generated-contract freshness, brand-asset hashes, licence policy | Node, Go |
-| `pnpm test:go:integration` | Go integration tests (`-tags integration`): roles and bootstrap, migrations up/down/up, RLS isolation and fail-closed behaviour, runtime-role restrictions, transactional River enqueue, Valkey, MinIO (put/head/presigned download), Mailpit delivery | Docker. A throwaway PostgreSQL 18 container on a random loopback port (roles are cluster-wide, so tests never touch the dev database); Valkey, MinIO and Mailpit from `pnpm infra:up` — their tests skip, with a warning, when the stack is down |
+| `pnpm test:go:integration` | Go integration tests (`-tags integration`): roles and bootstrap, migrations up/down/up and full rollback to zero, RLS on every table with `org_id`, RLS isolation and fail-closed behaviour, runtime-role restrictions, transactional River enqueue, Valkey, MinIO (put/head/presigned download), Mailpit delivery, and the HTTP suites in `services/internal/apiserver` (see “Identity and organisation coverage”) | Docker. A throwaway PostgreSQL 18 container on a random loopback port (roles are cluster-wide, so tests never touch the dev database); Valkey, MinIO and Mailpit from `pnpm infra:up` — their tests skip, with a warning, when the stack is down |
 | `pnpm visual:test` (`visual:update` to re-baseline) | Every Storybook story in light and dark: screenshot compared with `packages/ui/visual/baseline`, then axe with the WCAG 2.0/2.1/2.2 A and AA rule sets (including colour contrast). Stories tagged `novisual` are skipped; `vp-<width>` sets the viewport for shell stories | Docker. Runs in the pinned Playwright image (`packages/ui/visual/runner`), so baselines are identical on Windows, macOS, Linux and CI. Report: `packages/ui/visual/.results/report` |
+| `pnpm test:e2e` | Playwright end-to-end story over two organisations seeded with `mcctl org create`, reading one-time links from Mailpit, plus targeted screenshots of the new screens (`apps/e2e/suite/baseline`; `--update` re-baselines, `--local` runs natively without screenshots) | The running stack (`pnpm dev` or `pnpm dev:docker`). Runs in the same pinned Playwright image as the visual suite; a forwarder inside the container exposes the stack on `localhost:8080`, because browsers accept the `__Host-` session cookie over HTTP only on localhost. Rate-limit state in the local Valkey is reset before each run |
+| `pnpm sql:check` | sqlc output in `services/internal/*/store` matches `db/queries` and the migrations (`pnpm gen` regenerates contracts and sqlc code) | Docker (pinned sqlc image) |
 | `pnpm audit:deps` | `pnpm audit --audit-level high` + govulncheck | Network |
 | `pnpm licenses` | npm and Go licence allow-list (strong copyleft and unknown licences fail) | — |
 | `pnpm doctor` | Connectivity and schema check of PostgreSQL, Valkey, object storage, SMTP and LiveKit | Local stack |
 
-Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts WCAG contrast for every token pairing in both themes; `services/internal/apiserver/contract_test.go` validates real API responses against the bundled OpenAPI schemas; `packages/contracts/test` validates every OpenAPI example and the documented WebSocket frames.
+Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts WCAG contrast for every token pairing in both themes; `services/internal/apiserver/openapi_test.go` walks the real router and fails when a route is missing from the OpenAPI document or a documented operation is not served, and validates every response of the integration suites (successes and problems) against the documented schema for its status; `packages/contracts/test` validates every OpenAPI example and the documented WebSocket frames.
+
+### Identity and organisation coverage
+
+| Area | Go HTTP integration (`auth_integration_test.go`, `orgs_integration_test.go`) | End-to-end (`apps/e2e`) |
+|---|---|---|
+| Sign-in | Identical response for wrong password and unknown account; cookie attributes (`__Host-`, Secure, HttpOnly, SameSite=Lax, no Domain); session token never in a body | Sign-in page; wrong password message |
+| Sessions | Fixation (sign-in replaces and revokes the previous session; planted tokens rejected); logout; revoked token replay; device list; revoke one (immediate, cache evicted); revoke others; another user's session answers 404; idle expiry (injected clock) | Sign-out ends the session |
+| CSRF | Missing `X-MC-Client`, foreign `Origin`, missing `Origin`, missing/forged/other-session `X-CSRF-Token` → `403 csrf_failed` | Every flow runs with the real browser headers |
+| Recovery and verification | Reset: uniform `202`, unknown address gets no email, weak password rejected, single use, expiry, all sessions revoked; verification: single use, an address proved by another account cannot be claimed | Account setup and forgot/reset through Mailpit links; reused link refused |
+| Two-step verification | Enrolment, challenge instead of session, wrong code, replay of a used time step, challenge burned after five failures, recovery code single use, step-up required to disable | Enrol, sign in with a code, sign in with a recovery code |
+| Rate limiting | Per-account login limit with `Retry-After` (independent of client address); recovery limit | — |
+| Invitations | Single use, tampered token, client-supplied `role`/`org_id` rejected, expiry, resend rotates the token, revoke (idempotent), duplicate pending, already a member, signed-out existing account must sign in, wrong signed-in account refused, cursor bound to filters | New accounts from email links; reuse refused; tampered link; existing account joins a second organisation |
+| Roles and settings | Guest restrictions; Members cannot manage; Admins cannot change themselves, the Owner, or Admins; role changes and deactivation apply on the next request; optimistic concurrency (`428`/`412`); invite policy; 2FA requirement per organisation; `session_max_age` per organisation | Guest and Member restrictions in the UI and API; deactivation removes access |
+| Tenant isolation | Every org route with another organisation's ID → 404; own path with another organisation's member/invitation IDs → 404; runtime role sees no rows without context; audit logs append-only | Organisation of another tenant shows "not found"; API calls answer 404 |
+| Secrets in logs | Every password, token, TOTP secret and recovery code used by the suite is asserted absent from the captured logs | — |
 
 ### Full Docker verification
 
@@ -44,12 +61,12 @@ Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts W
 | Job | Gates |
 |---|---|
 | Web, design system and contracts | Prettier, ESLint + Redocly, TypeScript, Vitest, contract freshness + schema tests, brand-asset hashes, web production build, Storybook build |
-| Go services | gofmt, `go vet` (both tag sets), unit and contract tests with `-race`, integration tests against PostgreSQL/Valkey/Mailpit service containers (MinIO tests skip: no published image), binary build, govulncheck |
+| Go services | gofmt, `go vet` (both tag sets), sqlc freshness (`sqlc diff` in the pinned image), unit and contract tests with `-race`, integration tests against PostgreSQL/Valkey/Mailpit service containers (MinIO tests skip: no published image), binary build, govulncheck |
 | Visual regression and accessibility | `pnpm visual:test`; the report is uploaded when it fails |
 | Secrets, dependencies and licences | gitleaks over the full history, `pnpm audit --audit-level high`, licence policy, dependency review on pull requests |
 | Container images build | `go.Dockerfile` (`api`, `worker`, `mcctl`) and `web.Dockerfile` |
 
-Actions are pinned to commit SHAs. Dependency advisories that have no patched release are handled with the smallest compatible change and documented where they are applied (for example the `fast-glob` → `tinyglobby` override in `pnpm-workspace.yaml`).
+The end-to-end suite is not in CI yet: it needs the full stack, which CI does not start. Actions are pinned to commit SHAs. Dependency advisories that have no patched release are handled with the smallest compatible change and documented where they are applied (for example the `fast-glob` → `tinyglobby` override in `pnpm-workspace.yaml`).
 
 ## Test matrix
 

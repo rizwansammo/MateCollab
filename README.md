@@ -11,9 +11,10 @@ Requirements: Docker Desktop (or Docker Engine), Node.js 24+, pnpm 11, and any G
 ```sh
 pnpm setup   # once: .env with local secrets, dependencies, infrastructure, database, storage
 pnpm dev     # infrastructure in Docker; API, worker and web natively with reload
+pnpm mcctl org create --name "Acme" --slug acme --owner-email you@example.test   # first organisation
 ```
 
-Open **http://localhost:8080**. Everything (web, `/api`, WebSocket) is served from that one
+Open **http://localhost:8080** and set your password from the email in Mailpit (http://localhost:8025). Everything (web, `/api`, WebSocket) is served from that one
 origin through Nginx, exactly as in production. `pnpm dev:docker` runs the whole stack in
 containers instead. Details: [docs/development/LOCAL-DEVELOPMENT.md](docs/development/LOCAL-DEVELOPMENT.md).
 
