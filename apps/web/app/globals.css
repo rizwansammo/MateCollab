@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@matecollab/ui/theme.css';
+
+/* Application sources (the design system scans its own components). */
+@source '../src';
+@source '../app';
+/* Design-system stories are documentation, not product UI. */
+@source not '../../../packages/ui/src/stories';

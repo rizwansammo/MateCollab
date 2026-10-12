@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Status: Phase 0 proposal · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--accepted), [ADR-009](DECISIONS.md#adr-009--typography)
+Status: Foundation implemented (tokens, primitives, shell, theming; see §15) · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--accepted), [ADR-009](DECISIONS.md#adr-009--typography)
 
 The production web app must **faithfully preserve the approved MateCollab-UI visual language** — adaptive three-panel layout, premium restrained styling, light and dark parity — while replacing the prototype's simulation internals with production architecture.
 
@@ -113,7 +113,7 @@ Tokens are CSS custom properties in `packages/ui/tokens/*.css`, mapped into Tail
 
 ### Colour tokens
 
-Brand values come from the Logo Library; neutrals come from the prototype and were adjusted only where WCAG AA contrast failed. Ratios below were computed for this proposal; Phase 1 re-validates the full set in Storybook.
+Brand values come from the Logo Library; neutrals come from the prototype and were adjusted only where WCAG AA contrast failed. The implemented set lives in `packages/ui/src/styles/theme.css`; `packages/ui/test/tokens.test.ts` re-checks every text pairing (4.5:1) and control boundary (3:1) in both themes, and axe checks every Storybook story in both themes.
 
 | Token | Light | Dark | Use / contrast |
 |---|---|---|---|
@@ -128,7 +128,7 @@ Brand values come from the Logo Library; neutrals come from the prototype and we
 | `--fg` | `#253248` | `#DDE4EF` | Text — 12.9:1 / 13.1:1 |
 | `--fg-muted` | `#667185` | `#95A2B5` | Secondary text — ≥ 4.6:1 on bg and sidebar (prototype `#778294` was 3.9:1) |
 | `--border` | `#E5E9EF` | `#303A49` | Decorative dividers and card outlines |
-| `--border-control` | `#CED6E3` *(or `#8A95A7` for 3:1 — Phase 1 decision)* | `#445168` *(or `#66758C`)* | Inputs, composer |
+| `--border-control` | `#8A95A7` | `#66758C` | Inputs, selects, checkboxes, radios, composer — **decided: 3:1** against the page (3.03:1 / 3.58:1) so form fields are identifiable without relying on placeholder text (WCAG 1.4.11) |
 | `--primary` | `#7047D1` | `#7047D1` | Primary buttons and send — white text 5.98:1 (a labelled button is identified by its text; the fill itself needs no 3:1 against the page) |
 | `--primary-hover` | `#5E37BD` | `#7B55DB` | Hover — white text 7.6:1 / 5.0:1 |
 | `--primary-control` | `#7047D1` | `#8A66EC` | Fills whose colour *is* the state (switch on, checkbox checked, selected radio) — ≥ 3:1 against the surface and against the white thumb (light 5.98:1; dark 4.1:1 and 4.0:1) |
@@ -151,7 +151,7 @@ Brand values come from the Logo Library; neutrals come from the prototype and we
 | Radius — input, select, button, card, menu, file tile, composer | **6 px** (prototype buttons were 5 px) |
 | Radius — modal, sheet | **8 px** |
 | Radius — avatars, presence dots | full circle (only round elements) |
-| Font | Inter variable (self-hosted via `next/font`), fallback `system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`; tabular figures for times and counts |
+| Font | Inter variable, self-hosted from `@fontsource-variable/inter` (same files for the app and Storybook, served from the app origin), fallback `system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`; tabular figures for times and counts |
 | Type scale | 11 (minimum), 12, 13, 14 (body), 15, 16, 18, 19, 28 px (32 px Home title ≥ 1650 px); weights 400–650 (750 for org initials) |
 | Heading style | Weight 650, tight tracking (−0.7 px at 28 px) as prototype |
 | Spacing | 4 px scale with 2 px half-steps; prototype values rounded to the nearest step (≤ 1 px change) and verified by visual regression |
@@ -170,7 +170,7 @@ Avoid: pill-shaped buttons, large radii, heavy shadows, gradients, generic dashb
 ## 7. Theming
 
 * Preferences: Light, Dark, System; density Comfortable/Compact; text size 16/18/20 (root font size; everything in `rem`); reduced motion; "always show message actions".
-* Server-persisted in `user_preferences`, mirrored in a `mc_theme` cookie so the server renders the correct `data-theme` and an inline (nonce'd) script resolves "System" before first paint — no flash.
+* Server-persisted in `user_preferences`, mirrored in a `mc_theme` cookie so the server renders the correct `data-theme` (`light`, `dark` or `system`). *Implemented without any script:* every colour token is a CSS `light-dark()` pair and `data-theme` only sets `color-scheme`, so "System" follows the OS in pure CSS before first paint (tokens use Tailwind `@theme inline` so nested `data-theme` scopes, such as theme previews, also resolve correctly). Until accounts exist, the cookie is the only store.
 * `color-scheme` is set per theme so native controls and scrollbars match.
 
 ## 8. Component inventory
@@ -246,3 +246,18 @@ Emoji shortcodes (`:thumbsup:`) are converted to Unicode in the composer. Max 40
 | `settings.tsx` local-only settings | API-backed settings with optimistic updates and audit |
 | Prototype states page | Storybook stories (visual regression baseline) |
 | `webmcp.ts` | Not in V1 |
+
+## 15. Implementation status (production foundation)
+
+| Area | Implemented | Notes |
+|---|---|---|
+| Tokens | `packages/ui/src/styles/theme.css` | Tailwind 4 `@theme inline`; default palette, radii, type scale and breakpoints are replaced so only semantic tokens exist. Extra tokens beyond §5: `fg-nav`, `icon-muted`, `nav-count(-fg)`, `accent-strong(-fg)`, `org(-line/-fg)`, `tone-1…5(-fg)` (avatar initials, ≥ 4.6:1 both themes), `switch-off`, `tooltip(-fg)`, `rail-hover`, `rail-line`, `overlay`. Breakpoint variants: `max-phone` (≤ 760), `max-tablet` (≤ 1100), `max-compact` (≤ 1320), `dock` (≥ 1400), `wide` (≥ 1650). A lint rule rejects hex literals in TS/TSX outside the token file |
+| Primitives | `packages/ui/src/components` | Button, IconButton (label required, tooltip), Tooltip, Field (label/hint/error wiring for every control), Input, Textarea, Select, Checkbox, RadioGroup, RadioCard, Switch, ChoiceLabel, Avatar (+ presence, tones), AvatarGroup, PresenceDot, Badge, Kbd, NavCount, DropdownMenu, ContextMenu, Tabs, Dialog, ConfirmDialog, Drawer, Toast/Toaster, EmptyState, Skeleton, Spinner, Progress, SearchTrigger (⌘/Ctrl K), ResizeHandle, BrandMark, BrandLockup, VisuallyHidden. Combobox, Popover, Table, ScrollArea and CommandPalette arrive with their first feature |
+| Shell | `packages/ui/src/shell` + `apps/web/src/components/shell` | `AppFrame` (rail, resizable sidebar with keyboard separator, global bar, right `ContextPanel`, tablet/phone drawer, phone bottom navigation, skip link), `Rail`/`RailItem`, `GlobalBar`/`Breadcrumb`, `Sidebar`/`SidebarItem`/`OrgSwitcherButton`, `Page`/`PageHeader`/`SectionTitle`. The web app composes them with routes; panels use `?panel=` (Help panel today) |
+| State patterns | `packages/ui/src/patterns/state-patterns.tsx` | The prototype's fifteen interaction-review states as one component and catalogue |
+| Theming | cookie `mc_theme` + `light-dark()` | Settings → Appearance switches immediately; sidebar width persists in `mc_sidebar_w` |
+| Routes | `/home`, `/actions`, `/saved`, `/support`, `/chats`, `/spaces`, `/meetings?view=`, `/files?view=`, `/activity?type=`, `/settings/appearance` | Unscoped until organisations exist; they move under `/{org}/` with membership. Pages show honest empty states, no sample data |
+| Storybook | `packages/ui` (`pnpm storybook`) | Light/Dark toolbar; every story is a visual baseline in both themes and is checked with axe (WCAG 2.2 AA) in a pinned Playwright container (`pnpm visual:test`) |
+| Accessibility linting | axe (Storybook stories and app pages) | `eslint-plugin-jsx-a11y` does not support ESLint 10; rendered-markup checks with axe replace it |
+| i18n | Not yet | Strings are inline in this foundation; next-intl and externalised strings arrive with the first product screens |
+
