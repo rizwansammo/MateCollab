@@ -17,3 +17,10 @@ allowBuilds:
 peerDependencyRules:
   allowedVersions:
     openapi-typescript>typescript: "6"
+
+# GHSA-vfj7-8cjw-p6xm (braces <= 3.0.3, no patched release published): @next/eslint-plugin-next
+# pins fast-glob 3.3.1 → micromatch → braces, and only calls fast-glob's globSync(dir,
+# { onlyDirectories }) when `settings.next.rootDir` is set. tinyglobby provides the same
+# globSync API without braces; it is already used by Vite and Storybook.
+overrides:
+  "@next/eslint-plugin-next>fast-glob": npm:tinyglobby@^0.2.17
