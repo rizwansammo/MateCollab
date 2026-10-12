@@ -1,0 +1,4 @@
+type: string
+format: uuid
+description: Resource identifier (UUIDv7, time-ordered).
+examples: ['0199b2c4-8c30-7f12-a3c1-5b0e7d9f1c22']

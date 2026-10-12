@@ -1,0 +1,357 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "MateCollab API",
+    "version": "0.1.0",
+    "summary": "Same-origin REST API for the MateCollab web client.",
+    "description": "Conventions (naming, pagination, errors, idempotency, rate limits) are defined in\ndocs/api/API-DESIGN.md. This document is the source of truth for request and response\nshapes: TypeScript types are generated from it and the Go handlers are tested against it.\n\nWithin `/api/v1` changes are additive only. Clients must tolerate unknown fields and\nunknown enum values.\n",
+    "license": {
+      "name": "Proprietary",
+      "identifier": "LicenseRef-NetaMate-Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Same origin as the web application"
+    }
+  ],
+  "tags": [
+    {
+      "name": "platform",
+      "description": "Deployment metadata and runtime client configuration."
+    }
+  ],
+  "paths": {
+    "/config": {
+      "get": {
+        "operationId": "getRuntimeConfig",
+        "summary": "Get runtime client configuration",
+        "description": "Public, unauthenticated deployment settings the web client needs before sign-in: build\nversion, realtime endpoint, media server URL, upload limit and deployment-level feature\nswitches. Contains no secrets and no organisation or user data.\n",
+        "tags": [
+          "platform"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Runtime configuration for this deployment.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always `no-cache`; clients revalidate on every load.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-cache"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeConfig"
+                },
+                "examples": {
+                  "local": {
+                    "summary": "Local development",
+                    "value": {
+                      "environment": "local",
+                      "version": "0.1.0-dev+f9f0510",
+                      "api_version": "v1",
+                      "public_url": "http://localhost:8080",
+                      "realtime": {
+                        "path": "/api/v1/realtime",
+                        "protocol": "mc.v1"
+                      },
+                      "media": {
+                        "livekit_url": "ws://localhost:7880"
+                      },
+                      "uploads": {
+                        "max_upload_bytes": 104857600
+                      },
+                      "features": {
+                        "org_signup": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RuntimeConfig": {
+        "type": "object",
+        "description": "Deployment settings exposed to the web client before sign-in.",
+        "additionalProperties": false,
+        "required": [
+          "environment",
+          "version",
+          "api_version",
+          "public_url",
+          "realtime",
+          "media",
+          "uploads",
+          "features"
+        ],
+        "properties": {
+          "environment": {
+            "type": "string",
+            "enum": [
+              "local",
+              "ci",
+              "staging",
+              "production"
+            ],
+            "description": "Deployment environment. Clients treat unknown values as `production`."
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Build version of the API, e.g. `0.1.0+3f2c9a1`."
+          },
+          "api_version": {
+            "type": "string",
+            "const": "v1"
+          },
+          "public_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical origin users open (the same origin serves the API)."
+          },
+          "realtime": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "protocol"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "const": "/api/v1/realtime",
+                "description": "Same-origin WebSocket path (see docs/api/WEBSOCKET-EVENTS.md)."
+              },
+              "protocol": {
+                "type": "string",
+                "pattern": "^mc\\.v[0-9]+$",
+                "description": "Newest WebSocket subprotocol the server speaks."
+              }
+            }
+          },
+          "media": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "livekit_url"
+            ],
+            "properties": {
+              "livekit_url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri",
+                "description": "LiveKit signalling URL (`wss://` in production); null when media is not configured."
+              }
+            }
+          },
+          "uploads": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "max_upload_bytes"
+            ],
+            "properties": {
+              "max_upload_bytes": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1,
+                "description": "Platform ceiling for one file; organisations can only lower it."
+              }
+            }
+          },
+          "features": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "org_signup"
+            ],
+            "properties": {
+              "org_signup": {
+                "type": "boolean",
+                "description": "Whether new organisations can be created through self-service sign-up."
+              }
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "description": "RFC 9457 problem details, served as `application/problem+json`. `code` is the stable,\nmachine-readable value clients branch on; `type` is `urn:matecollab:problem:<code>`.\nDetails never include internal state, SQL, stack traces or data from other organisations.\n",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^urn:matecollab:problem:[a-z][a-z0-9_]*$",
+            "examples": [
+              "urn:matecollab:problem:validation_failed"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary of the problem type."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "examples": [
+              "not_found",
+              "validation_failed",
+              "rate_limited"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence, safe to show to the user."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "Request path that produced the problem (query string excluded)."
+          },
+          "request_id": {
+            "type": "string",
+            "description": "Correlates with server logs; quote it when contacting support."
+          },
+          "errors": {
+            "type": "array",
+            "description": "Field-level validation failures (422 `validation_failed`).",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          }
+        }
+      },
+      "FieldError": {
+        "type": "object",
+        "description": "One invalid request field.",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "JSON path of the field, e.g. `name` or `members[2].role`."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "examples": [
+              "required",
+              "too_long",
+              "invalid_format"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "User-facing explanation."
+          }
+        }
+      },
+      "Id": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Resource identifier (UUIDv7, time-ordered).",
+        "examples": [
+          "0199b2c4-8c30-7f12-a3c1-5b0e7d9f1c22"
+        ]
+      },
+      "Timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "description": "RFC 3339 UTC timestamp with millisecond precision.",
+        "examples": [
+          "2026-10-12T09:14:03.120Z"
+        ]
+      },
+      "PageInfo": {
+        "type": "object",
+        "description": "Cursor pagination state returned next to `data` in list responses. Cursors are opaque,\nsigned and bound to the query's filters; offsets are never used.\n",
+        "additionalProperties": false,
+        "required": [
+          "next_cursor",
+          "has_more"
+        ],
+        "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to fetch the next page; null on the last page."
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Problem": {
+        "description": "Error described as RFC 9457 problem details.",
+        "headers": {
+          "X-Request-ID": {
+            "description": "Request correlation identifier (also in the body as `request_id`).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "notFound": {
+                "summary": "Unknown or invisible resource",
+                "value": {
+                  "type": "urn:matecollab:problem:not_found",
+                  "title": "Not Found",
+                  "status": 404,
+                  "code": "not_found",
+                  "detail": "The requested resource was not found.",
+                  "instance": "/api/v1/unknown",
+                  "request_id": "870315265bf4066afd97af34d5e4fd7c"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

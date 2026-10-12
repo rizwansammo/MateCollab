@@ -1,0 +1,15 @@
+type: object
+description: One invalid request field.
+additionalProperties: false
+required: [field, code, message]
+properties:
+  field:
+    type: string
+    description: JSON path of the field, e.g. `name` or `members[2].role`.
+  code:
+    type: string
+    pattern: '^[a-z][a-z0-9_]*$'
+    examples: [required, too_long, invalid_format]
+  message:
+    type: string
+    description: User-facing explanation.

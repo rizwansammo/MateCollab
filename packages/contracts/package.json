@@ -1,0 +1,31 @@
+{
+  "name": "@matecollab/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MateCollab API contracts: OpenAPI 3.1, WebSocket event schemas and generated TypeScript types",
+  "exports": {
+    ".": "./src/index.ts",
+    "./openapi.json": "./src/generated/openapi.json",
+    "./events/*": "./events/*"
+  },
+  "scripts": {
+    "gen": "node scripts/generate.mjs",
+    "check": "node scripts/generate.mjs --check && node scripts/lint-openapi.mjs && vitest run",
+    "lint": "node scripts/lint-openapi.mjs && eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@matecollab/config": "workspace:*",
+    "@redocly/cli": "^2.57.0",
+    "@types/node": "^24.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "eslint": "^10.12.0",
+    "json-schema-to-typescript": "^16.0.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

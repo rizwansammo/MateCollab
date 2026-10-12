@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:matecollab:events:command-reply",
+  "title": "CommandReply",
+  "description": "Server reply to one client command: `ack` on success, `error` on failure (docs/api/WEBSOCKET-EVENTS.md §2.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "type", "re", "data"],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "type": {
+      "enum": ["ack", "error"]
+    },
+    "re": {
+      "description": "The `id` of the command being answered.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "if": {
+    "properties": { "type": { "const": "error" } }
+  },
+  "then": {
+    "properties": {
+      "data": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "message": { "type": "string" },
+          "retry_after_ms": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

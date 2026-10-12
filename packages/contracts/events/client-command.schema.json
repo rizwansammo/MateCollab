@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:matecollab:events:client-command",
+  "title": "ClientCommand",
+  "description": "Envelope of every frame the client sends (docs/api/WEBSOCKET-EVENTS.md §2.2 and §5). Inbound frames are limited to 16 KB.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "id", "type", "data"],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "id": {
+      "description": "Client-chosen identifier, unique per connection; echoed as `re` in the reply.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "type": {
+      "description": "Command name (`hello`, `ping`, `subscribe`, `unsubscribe`, `typing`, `presence.subscribe`, …).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

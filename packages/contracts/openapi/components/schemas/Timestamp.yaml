@@ -1,0 +1,4 @@
+type: string
+format: date-time
+description: RFC 3339 UTC timestamp with millisecond precision.
+examples: ['2026-10-12T09:14:03.120Z']

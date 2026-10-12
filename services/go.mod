@@ -18,6 +18,7 @@ require (
 	github.com/riverqueue/river v0.49.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.49.0
 	github.com/riverqueue/river/rivertype v0.49.0
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/wneessen/go-mail v0.8.1
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.47.0

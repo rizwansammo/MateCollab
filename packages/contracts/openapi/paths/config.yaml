@@ -1,0 +1,43 @@
+get:
+  operationId: getRuntimeConfig
+  summary: Get runtime client configuration
+  description: |
+    Public, unauthenticated deployment settings the web client needs before sign-in: build
+    version, realtime endpoint, media server URL, upload limit and deployment-level feature
+    switches. Contains no secrets and no organisation or user data.
+  tags: [platform]
+  security: []
+  responses:
+    '200':
+      description: Runtime configuration for this deployment.
+      headers:
+        Cache-Control:
+          description: Always `no-cache`; clients revalidate on every load.
+          schema:
+            type: string
+            const: no-cache
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RuntimeConfig.yaml
+          examples:
+            local:
+              summary: Local development
+              value:
+                environment: local
+                version: 0.1.0-dev+f9f0510
+                api_version: v1
+                public_url: http://localhost:8080
+                realtime:
+                  path: /api/v1/realtime
+                  protocol: mc.v1
+                media:
+                  livekit_url: ws://localhost:7880
+                uploads:
+                  max_upload_bytes: 104857600
+                features:
+                  org_signup: false
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

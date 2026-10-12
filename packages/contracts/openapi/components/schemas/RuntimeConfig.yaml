@@ -1,0 +1,60 @@
+type: object
+description: Deployment settings exposed to the web client before sign-in.
+additionalProperties: false
+required: [environment, version, api_version, public_url, realtime, media, uploads, features]
+properties:
+  environment:
+    type: string
+    enum: [local, ci, staging, production]
+    description: Deployment environment. Clients treat unknown values as `production`.
+  version:
+    type: string
+    minLength: 1
+    description: Build version of the API, e.g. `0.1.0+3f2c9a1`.
+  api_version:
+    type: string
+    const: v1
+  public_url:
+    type: string
+    format: uri
+    description: Canonical origin users open (the same origin serves the API).
+  realtime:
+    type: object
+    additionalProperties: false
+    required: [path, protocol]
+    properties:
+      path:
+        type: string
+        const: /api/v1/realtime
+        description: Same-origin WebSocket path (see docs/api/WEBSOCKET-EVENTS.md).
+      protocol:
+        type: string
+        pattern: '^mc\.v[0-9]+$'
+        description: Newest WebSocket subprotocol the server speaks.
+  media:
+    type: object
+    additionalProperties: false
+    required: [livekit_url]
+    properties:
+      livekit_url:
+        type: [string, 'null']
+        format: uri
+        description: LiveKit signalling URL (`wss://` in production); null when media is not configured.
+  uploads:
+    type: object
+    additionalProperties: false
+    required: [max_upload_bytes]
+    properties:
+      max_upload_bytes:
+        type: integer
+        format: int64
+        minimum: 1
+        description: Platform ceiling for one file; organisations can only lower it.
+  features:
+    type: object
+    additionalProperties: false
+    required: [org_signup]
+    properties:
+      org_signup:
+        type: boolean
+        description: Whether new organisations can be created through self-service sign-up.

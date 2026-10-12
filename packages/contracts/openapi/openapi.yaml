@@ -1,0 +1,41 @@
+openapi: 3.1.1
+info:
+  title: MateCollab API
+  version: 0.1.0
+  summary: Same-origin REST API for the MateCollab web client.
+  description: |
+    Conventions (naming, pagination, errors, idempotency, rate limits) are defined in
+    docs/api/API-DESIGN.md. This document is the source of truth for request and response
+    shapes: TypeScript types are generated from it and the Go handlers are tested against it.
+
+    Within `/api/v1` changes are additive only. Clients must tolerate unknown fields and
+    unknown enum values.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-NetaMate-Proprietary
+servers:
+  - url: /api/v1
+    description: Same origin as the web application
+tags:
+  - name: platform
+    description: Deployment metadata and runtime client configuration.
+paths:
+  /config:
+    $ref: ./paths/config.yaml
+components:
+  schemas:
+    RuntimeConfig:
+      $ref: ./components/schemas/RuntimeConfig.yaml
+    ProblemDetails:
+      $ref: ./components/schemas/ProblemDetails.yaml
+    FieldError:
+      $ref: ./components/schemas/FieldError.yaml
+    Id:
+      $ref: ./components/schemas/Id.yaml
+    Timestamp:
+      $ref: ./components/schemas/Timestamp.yaml
+    PageInfo:
+      $ref: ./components/schemas/PageInfo.yaml
+  responses:
+    Problem:
+      $ref: ./components/responses/Problem.yaml

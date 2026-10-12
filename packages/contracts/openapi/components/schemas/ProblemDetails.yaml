@@ -1,0 +1,38 @@
+type: object
+description: |
+  RFC 9457 problem details, served as `application/problem+json`. `code` is the stable,
+  machine-readable value clients branch on; `type` is `urn:matecollab:problem:<code>`.
+  Details never include internal state, SQL, stack traces or data from other organisations.
+additionalProperties: false
+required: [type, title, status, code]
+properties:
+  type:
+    type: string
+    pattern: '^urn:matecollab:problem:[a-z][a-z0-9_]*$'
+    examples: ['urn:matecollab:problem:validation_failed']
+  title:
+    type: string
+    description: Short human-readable summary of the problem type.
+  status:
+    type: integer
+    minimum: 400
+    maximum: 599
+  code:
+    type: string
+    pattern: '^[a-z][a-z0-9_]*$'
+    examples: [not_found, validation_failed, rate_limited]
+  detail:
+    type: string
+    description: Explanation specific to this occurrence, safe to show to the user.
+  instance:
+    type: string
+    format: uri-reference
+    description: Request path that produced the problem (query string excluded).
+  request_id:
+    type: string
+    description: Correlates with server logs; quote it when contacting support.
+  errors:
+    type: array
+    description: Field-level validation failures (422 `validation_failed`).
+    items:
+      $ref: ./FieldError.yaml

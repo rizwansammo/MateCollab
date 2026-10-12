@@ -1,0 +1,12 @@
+type: object
+description: |
+  Cursor pagination state returned next to `data` in list responses. Cursors are opaque,
+  signed and bound to the query's filters; offsets are never used.
+additionalProperties: false
+required: [next_cursor, has_more]
+properties:
+  next_cursor:
+    type: [string, 'null']
+    description: Pass as `cursor` to fetch the next page; null on the last page.
+  has_more:
+    type: boolean

@@ -1,0 +1,21 @@
+description: Error described as RFC 9457 problem details.
+headers:
+  X-Request-ID:
+    description: Request correlation identifier (also in the body as `request_id`).
+    schema:
+      type: string
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/ProblemDetails.yaml
+    examples:
+      notFound:
+        summary: Unknown or invisible resource
+        value:
+          type: urn:matecollab:problem:not_found
+          title: Not Found
+          status: 404
+          code: not_found
+          detail: The requested resource was not found.
+          instance: /api/v1/unknown
+          request_id: 870315265bf4066afd97af34d5e4fd7c

@@ -1,0 +1,16 @@
+extends:
+  - recommended
+
+rules:
+  # Shared building blocks (Id, Timestamp, PageInfo) are defined ahead of the endpoints that
+  # use them so every new endpoint reuses one definition instead of inventing its own.
+  no-unused-components: off
+  # Proprietary licence: there is no public licence URL.
+  info-license-strict: off
+  # The API is same-origin; the relative server URL is intentional.
+  no-server-example.com: error
+  no-invalid-media-type-examples: error
+  operation-4xx-response: error
+  security-defined: error
+
+telemetry: off
