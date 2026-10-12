@@ -3,13 +3,15 @@
 //   pnpm dev:docker            build, start and wait until healthy
 //   pnpm dev:docker --logs     …then follow application logs (Ctrl+C stops following only)
 
-import { c, compose, log, main, requireEnv } from './lib.mjs';
+import { c, capture, compose, log, main, requireEnv } from './lib.mjs';
 
 main(async () => {
   const env = {
     ...requireEnv(),
     MC_NGINX_WEB_UPSTREAM: 'web:3000',
     MC_NGINX_API_UPSTREAM: 'api:8081',
+    // Images have no git metadata; stamp the build version with the checked-out commit.
+    MC_BUILD_COMMIT: capture('git', ['rev-parse', '--short', 'HEAD']) ?? 'unknown',
   };
   log.step('Building images and starting the full stack (first build takes several minutes)');
   await compose(['--profile', 'app', 'up', '--build', '-d', '--wait', '--remove-orphans'], { env });

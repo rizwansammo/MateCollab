@@ -117,6 +117,7 @@ services:
       context: .
       dockerfile: infra/docker/go.Dockerfile
       target: mcctl
+      args: { COMMIT: "${MC_BUILD_COMMIT:-unknown}" }
     command: ["prepare"]
     env_file: [.env]
     environment: *container-env
@@ -132,6 +133,7 @@ services:
       context: .
       dockerfile: infra/docker/go.Dockerfile
       target: api
+      args: { COMMIT: "${MC_BUILD_COMMIT:-unknown}" }
     env_file: [.env]
     environment:
       <<: *container-env
@@ -152,6 +154,7 @@ services:
       context: .
       dockerfile: infra/docker/go.Dockerfile
       target: worker
+      args: { COMMIT: "${MC_BUILD_COMMIT:-unknown}" }
     env_file: [.env]
     environment:
       <<: *container-env
