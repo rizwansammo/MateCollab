@@ -190,3 +190,45 @@ func BodyLimit(n int64) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// ClientMeta describes who made a request, for audit records and session metadata. It never
+// carries cookies, tokens or bodies.
+type ClientMeta struct {
+	IP        netip.Addr
+	UserAgent string
+	RequestID string
+}
+
+// ClientMetaFrom extracts ClientMeta from a request (after RequestID and RealIP ran).
+func ClientMetaFrom(r *http.Request) ClientMeta {
+	ua := r.UserAgent()
+	if len(ua) > 512 {
+		ua = ua[:512]
+	}
+	return ClientMeta{IP: ClientIPFrom(r.Context()), UserAgent: ua, RequestID: RequestIDFrom(r.Context())}
+}
+
+// IPPtr and UserAgentPtr adapt ClientMeta to nullable columns.
+func (m ClientMeta) IPPtr() *netip.Addr {
+	if !m.IP.IsValid() {
+		return nil
+	}
+	ip := m.IP
+	return &ip
+}
+
+func (m ClientMeta) UserAgentPtr() *string {
+	if m.UserAgent == "" {
+		return nil
+	}
+	ua := m.UserAgent
+	return &ua
+}
+
+func (m ClientMeta) RequestIDPtr() *string {
+	if m.RequestID == "" {
+		return nil
+	}
+	id := m.RequestID
+	return &id
+}

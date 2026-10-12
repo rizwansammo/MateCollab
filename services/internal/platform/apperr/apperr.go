@@ -5,6 +5,7 @@ package apperr
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Kind classifies an error for transport mapping.
@@ -20,6 +21,7 @@ const (
 	KindNotFound
 	KindConflict
 	KindPreconditionFailed
+	KindPreconditionRequired
 	KindTooLarge
 	KindRateLimited
 	KindUnavailable
@@ -39,6 +41,8 @@ type Error struct {
 	Detail string // safe to show to API clients
 	Fields []FieldError
 	Err    error // wrapped cause; never shown to clients
+	// RetryAfter is sent as the Retry-After header (rate limits, progressive login delays).
+	RetryAfter time.Duration
 }
 
 func (e *Error) Error() string {
@@ -72,6 +76,27 @@ func Malformed(detail string, cause error) *Error {
 // NotFound reports a missing or invisible resource (never distinguishes the two).
 func NotFound() *Error {
 	return &Error{Kind: KindNotFound, Code: "not_found", Detail: "The requested resource was not found."}
+}
+
+// Unauthenticated reports a missing, expired or revoked session (or failed credentials).
+func Unauthenticated(code, detail string) *Error {
+	if code == "" {
+		code = "unauthenticated"
+	}
+	return &Error{Kind: KindUnauthenticated, Code: code, Detail: detail}
+}
+
+// RateLimited reports that the caller must wait before retrying.
+func RateLimited(retryAfter time.Duration) *Error {
+	return &Error{
+		Kind: KindRateLimited, Code: "rate_limited",
+		Detail: "Too many attempts. Please wait before trying again.", RetryAfter: retryAfter,
+	}
+}
+
+// Field builds one field error.
+func Field(field, code, message string) FieldError {
+	return FieldError{Field: field, Code: code, Message: message}
 }
 
 // Forbidden reports a visible resource the caller may not act on.

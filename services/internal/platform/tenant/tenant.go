@@ -53,3 +53,49 @@ func ScopeFrom(ctx context.Context) (Scope, bool) {
 	s, ok := ctx.Value(scopeKey{}).(Scope)
 	return s, ok
 }
+
+// Role is an organisation role (MULTITENANCY.md §3.1).
+type Role string
+
+// Organisation roles, highest first.
+const (
+	RoleOwner  Role = "owner"
+	RoleAdmin  Role = "admin"
+	RoleMember Role = "member"
+	RoleGuest  Role = "guest"
+)
+
+// Valid reports whether r is a known role.
+func (r Role) Valid() bool {
+	switch r {
+	case RoleOwner, RoleAdmin, RoleMember, RoleGuest:
+		return true
+	}
+	return false
+}
+
+// Actor is a user acting inside one organisation, resolved from an active membership by the
+// organisation-context middleware (MULTITENANCY.md §2.1). Handlers never inspect it; services
+// pass it to the authorization policy and open tenant transactions with its scope.
+type Actor struct {
+	UserID    UserID
+	OrgID     OrgID
+	Role      Role
+	SessionID uuid.UUID
+}
+
+// Scope returns the database tenant scope for the actor.
+func (a Actor) Scope() Scope { return Scope{OrgID: a.OrgID, UserID: a.UserID} }
+
+type actorKey struct{}
+
+// WithActor stores the actor (and its scope) on a context.
+func WithActor(ctx context.Context, a Actor) context.Context {
+	return WithScope(context.WithValue(ctx, actorKey{}, a), a.Scope())
+}
+
+// ActorFrom returns the actor stored on ctx.
+func ActorFrom(ctx context.Context) (Actor, bool) {
+	a, ok := ctx.Value(actorKey{}).(Actor)
+	return a, ok
+}

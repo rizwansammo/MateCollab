@@ -4,6 +4,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -89,6 +90,35 @@ func InTenantTx(ctx context.Context, pool *pgxpool.Pool, scope tenant.Scope, fn 
 		return err
 	}
 	return run(ctx, pool, &scope, fn)
+}
+
+// InUserTx runs fn with only the user context set (mc.user_id): the user's own identity rows
+// and their memberships are visible, no organisation's tenant data is.
+func InUserTx(ctx context.Context, pool *pgxpool.Pool, userID tenant.UserID, fn func(*Tx) error) error {
+	if userID.IsZero() {
+		return errors.New("db: user context requires a user ID")
+	}
+	return InTx(ctx, pool, func(tx *Tx) error {
+		if err := SetScope(ctx, tx, tenant.Scope{UserID: userID}); err != nil {
+			return err
+		}
+		return fn(tx)
+	})
+}
+
+// SetScope sets (or changes) the transaction-local tenant settings on an open transaction, for
+// flows that learn the user or organisation part-way through (token redemption, invitation
+// acceptance). Empty parts are cleared.
+func SetScope(ctx context.Context, tx *Tx, s tenant.Scope) error {
+	org, user := "", ""
+	if !s.OrgID.IsZero() {
+		org = s.OrgID.String()
+	}
+	if !s.UserID.IsZero() {
+		user = s.UserID.String()
+	}
+	_, err := tx.Exec(ctx, "SELECT set_config('mc.org_id', $1, true), set_config('mc.user_id', $2, true)", org, user)
+	return err
 }
 
 func run(ctx context.Context, pool *pgxpool.Pool, scope *tenant.Scope, fn func(*Tx) error) (err error) {

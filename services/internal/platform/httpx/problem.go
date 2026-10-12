@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/rizwansammo/MateCollab/services/internal/platform/apperr"
 )
@@ -30,16 +32,17 @@ type Problem struct {
 func problemType(code string) string { return "urn:matecollab:problem:" + code }
 
 var statusByKind = map[apperr.Kind]int{
-	apperr.KindValidation:         http.StatusUnprocessableEntity,
-	apperr.KindMalformed:          http.StatusBadRequest,
-	apperr.KindUnauthenticated:    http.StatusUnauthorized,
-	apperr.KindForbidden:          http.StatusForbidden,
-	apperr.KindNotFound:           http.StatusNotFound,
-	apperr.KindConflict:           http.StatusConflict,
-	apperr.KindPreconditionFailed: http.StatusPreconditionFailed,
-	apperr.KindTooLarge:           http.StatusRequestEntityTooLarge,
-	apperr.KindRateLimited:        http.StatusTooManyRequests,
-	apperr.KindUnavailable:        http.StatusServiceUnavailable,
+	apperr.KindValidation:           http.StatusUnprocessableEntity,
+	apperr.KindMalformed:            http.StatusBadRequest,
+	apperr.KindUnauthenticated:      http.StatusUnauthorized,
+	apperr.KindForbidden:            http.StatusForbidden,
+	apperr.KindNotFound:             http.StatusNotFound,
+	apperr.KindConflict:             http.StatusConflict,
+	apperr.KindPreconditionFailed:   http.StatusPreconditionFailed,
+	apperr.KindPreconditionRequired: http.StatusPreconditionRequired,
+	apperr.KindTooLarge:             http.StatusRequestEntityTooLarge,
+	apperr.KindRateLimited:          http.StatusTooManyRequests,
+	apperr.KindUnavailable:          http.StatusServiceUnavailable,
 }
 
 // ProblemFor converts any error into a Problem. Unclassified errors become a generic 500 so
@@ -69,6 +72,9 @@ func WriteProblem(w http.ResponseWriter, r *http.Request, err error) {
 	p := ProblemFor(r, err)
 	if p.Status >= 500 {
 		LoggerFrom(r.Context()).ErrorContext(r.Context(), "request failed", slog.Int("status", p.Status), slog.String("code", p.Code), slog.Any("error", err))
+	}
+	if e, ok := apperr.As(err); ok && e.RetryAfter > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(e.RetryAfter.Seconds()))))
 	}
 	w.Header().Set("Content-Type", ProblemContentType)
 	w.Header().Set("Cache-Control", "no-store")
