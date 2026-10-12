@@ -17,11 +17,15 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/rizwansammo/MateCollab/services/internal/apiserver"
 	"github.com/rizwansammo/MateCollab/services/internal/app"
+	"github.com/rizwansammo/MateCollab/services/internal/orgs"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/apperr"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/crypto"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/db"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/health"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/livekit"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/mailer"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
@@ -39,6 +43,9 @@ Usage:
   mcctl migrate status        list migrations and whether they are applied
   mcctl storage init          create the bucket and apply CORS/lifecycle rules where supported
   mcctl mail test --to ADDR   send a test email through the platform mailer
+  mcctl org create --name NAME --slug SLUG --owner-email ADDR [--owner-name NAME] [--print-setup-link]
+                              create an organisation; a new owner account is emailed a
+                              set-your-password link
   mcctl keys generate         print a new encryption keyring entry
   mcctl config check          validate configuration for every binary
   mcctl doctor                check connectivity to every local dependency
@@ -85,6 +92,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return storageInit(ctx, cfg, out)
 	case "mail test":
 		return mailTest(ctx, cfg, args[2:], out)
+	case "org create":
+		return orgCreate(ctx, cfg, logger, args[2:], out)
 	case "config check":
 		return configCheck(cfg, out)
 	case "doctor":
@@ -192,6 +201,69 @@ func mailTest(ctx context.Context, cfg *config.Config, args []string, out io.Wri
 	return nil
 }
 
+func orgCreate(ctx context.Context, cfg *config.Config, logger *slog.Logger, args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("org create", flag.ContinueOnError)
+	name := fs.String("name", "", "organisation name")
+	slug := fs.String("slug", "", "URL name: 3–40 lowercase letters, numbers and hyphens")
+	ownerEmail := fs.String("owner-email", "", "email address of the first Owner")
+	ownerName := fs.String("owner-name", "", "display name, used when the owner account is created")
+	printLink := fs.Bool("print-setup-link", false, "also print the single-use setup link (when email delivery is unavailable)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *name == "" || *slug == "" || *ownerEmail == "" {
+		return errors.New("--name, --slug and --owner-email are required")
+	}
+	if err := cfg.Require(config.PartHTTP, config.PartDatabase, config.PartRedis, config.PartCrypto); err != nil {
+		return err
+	}
+	pool, err := db.NewPool(ctx, cfg.Database.URL, db.PoolOptions{ApplicationName: "mc-mcctl", MaxConns: 2})
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := db.CheckSchema(ctx, pool, cfg.Database.MigrationsDir); err != nil {
+		return err
+	}
+	rdb, err := redisx.New(cfg.Redis.URL)
+	if err != nil {
+		return err
+	}
+	defer rdb.Close()
+	queue, err := jobs.NewInsertOnlyClient(pool, logger)
+	if err != nil {
+		return err
+	}
+	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Logger: logger})
+	if err != nil {
+		return err
+	}
+	displayName := *ownerName
+	if displayName == "" {
+		displayName = strings.Split(*ownerEmail, "@")[0]
+	}
+	res, err := svc.Orgs.CreateWithOwner(ctx, *name, strings.ToLower(*slug), orgs.OwnerSpec{Email: *ownerEmail, DisplayName: displayName})
+	if err != nil {
+		if e, ok := apperr.As(err); ok && len(e.Fields) > 0 {
+			for _, f := range e.Fields {
+				fmt.Fprintf(out, "  %s: %s\n", f.Field, f.Message)
+			}
+		}
+		return err
+	}
+	fmt.Fprintf(out, "organisation %q created\n  id:   %s\n  url:  %s/%s/home\n", res.Organisation.Name, res.Organisation.ID,
+		strings.TrimRight(cfg.PublicURL.String(), "/"), res.Organisation.Slug)
+	if res.NewAccount {
+		fmt.Fprintf(out, "owner account created for %s; a set-your-password email was queued.\n", *ownerEmail)
+		if *printLink {
+			fmt.Fprintf(out, "  setup link (single use, 72 hours; treat it like a password): %s\n", res.SetupLink)
+		}
+	} else {
+		fmt.Fprintf(out, "existing account %s is the Owner.\n", *ownerEmail)
+	}
+	return nil
+}
+
 func keysGenerate(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("keys generate", flag.ContinueOnError)
 	kid := fs.String("kid", "k"+time.Now().UTC().Format("20060102"), "key id")
@@ -208,8 +280,8 @@ func keysGenerate(args []string, out io.Writer) error {
 
 func configCheck(cfg *config.Config, out io.Writer) error {
 	parts := map[string][]config.Part{
-		"api":                        {config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis},
-		"worker":                     {config.PartAdmin, config.PartDatabase, config.PartRedis},
+		"api":                        {config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto},
+		"worker":                     {config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto},
 		"mcctl migrate/storage/mail": {config.PartMigrations, config.PartStorage, config.PartSMTP},
 		"platform services":          {config.PartLiveKit, config.PartCrypto},
 	}

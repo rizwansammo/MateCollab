@@ -14,12 +14,15 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/rizwansammo/MateCollab/services/internal/app"
+	"github.com/rizwansammo/MateCollab/services/internal/emails"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/adminserver"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/crypto"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/db"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/health"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/mailer"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 )
@@ -45,7 +48,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.Require(config.PartAdmin, config.PartDatabase, config.PartRedis); err != nil {
+	if err := cfg.Require(config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto); err != nil {
 		return err
 	}
 	version := app.BuildVersion()
@@ -72,9 +75,19 @@ func run(ctx context.Context) error {
 	}
 	defer rdb.Close()
 
+	keyring, err := crypto.ParseKeyring(cfg.Crypto.Keyring, cfg.Crypto.ActiveKey)
+	if err != nil {
+		return fmt.Errorf("keyring: %w", err)
+	}
+	smtp, err := mailer.New(cfg.SMTP)
+	if err != nil {
+		return err
+	}
+
 	metrics := telemetry.NewMetrics("worker")
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &jobs.HeartbeatWorker{Metrics: metrics, Logger: logger})
+	river.AddWorker(workers, &emails.Worker{Sender: smtp, Keyring: keyring, Logger: logger})
 
 	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic()})
 	if err != nil {

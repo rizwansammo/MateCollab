@@ -26,7 +26,7 @@ func testRouter(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Router(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), telemetry.NewMetrics("test"))
+	return Router(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), telemetry.NewMetrics("test"), nil)
 }
 
 func TestConfigEndpoint(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	_ "time/tzdata" // time zone validation must not depend on the container's zoneinfo
 
 	"github.com/rizwansammo/MateCollab/services/internal/apiserver"
 	"github.com/rizwansammo/MateCollab/services/internal/app"
@@ -16,6 +17,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/db"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/health"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 )
@@ -41,7 +43,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.Require(config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis); err != nil {
+	if err := cfg.Require(config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto); err != nil {
 		return err
 	}
 	version := app.BuildVersion()
@@ -69,6 +71,16 @@ func run(ctx context.Context) error {
 	}
 	defer rdb.Close()
 
+	// The API only enqueues jobs (emails and, later, fan-out work); the worker runs them.
+	queue, err := jobs.NewInsertOnlyClient(pool, logger)
+	if err != nil {
+		return fmt.Errorf("river: %w", err)
+	}
+	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Logger: logger})
+	if err != nil {
+		return err
+	}
+
 	metrics := telemetry.NewMetrics("api")
 	checks := []health.Check{
 		{Name: "postgres", Critical: true, Probe: pool.Ping},
@@ -77,7 +89,7 @@ func run(ctx context.Context) error {
 
 	logger.Info("api starting", slog.String("env", string(cfg.Env)), slog.String("public_url", cfg.PublicURL.String()))
 	return httpx.Serve(ctx, logger,
-		httpx.NewServer(cfg.HTTPAddr, apiserver.Router(cfg, logger, metrics)),
+		httpx.NewServer(cfg.HTTPAddr, apiserver.Router(cfg, logger, metrics, svc)),
 		httpx.NewServer(cfg.AdminAddr, adminserver.Handler(metrics, checks)),
 	)
 }
