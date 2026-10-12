@@ -45,6 +45,64 @@ func TestMigrationsRollBackAndReapply(t *testing.T) {
 	}
 }
 
+// Every migration must be reversible: roll the whole application schema back, then forward.
+func TestEveryMigrationRollsBack(t *testing.T) {
+	d := testkit.NewDatabase(t)
+	ctx := context.Background()
+	statuses, err := d.Migrator.Status(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range statuses {
+		if err := d.Migrator.Down(ctx); err != nil {
+			t.Fatalf("down: %v", err)
+		}
+	}
+	var tables int
+	if err := d.Owner.QueryRow(ctx, `SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'river%' AND tablename <> 'goose_db_version'`).Scan(&tables); err != nil {
+		t.Fatal(err)
+	}
+	if tables != 0 {
+		t.Fatalf("%d application tables left after rolling everything back", tables)
+	}
+	if err := d.Migrator.Up(ctx); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+}
+
+// MULTITENANCY.md §2.5: every table with an org_id column has RLS enabled and forced, and at
+// least one policy. New tenant tables cannot ship without it.
+func TestEveryTenantTableHasRowLevelSecurity(t *testing.T) {
+	d := testkit.NewDatabase(t)
+	ctx := context.Background()
+	rows, err := d.Owner.Query(ctx, `
+		SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+		       (SELECT count(*) FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname)
+		FROM information_schema.columns col
+		JOIN pg_class c ON c.relname = col.table_name AND c.relnamespace = 'public'::regnamespace AND c.relkind = 'r'
+		WHERE col.table_schema = 'public' AND col.column_name = 'org_id'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	n := 0
+	for rows.Next() {
+		var name string
+		var enabled, forced bool
+		var policies int
+		if err := rows.Scan(&name, &enabled, &forced, &policies); err != nil {
+			t.Fatal(err)
+		}
+		n++
+		if !enabled || !forced || policies == 0 {
+			t.Errorf("%s: rls=%t forced=%t policies=%d", name, enabled, forced, policies)
+		}
+	}
+	if n == 0 {
+		t.Fatal("no tenant tables found")
+	}
+}
+
 func TestRuntimeRoleCannotChangeSchemaOrBypassRLS(t *testing.T) {
 	d := testkit.NewDatabase(t)
 	ctx := context.Background()

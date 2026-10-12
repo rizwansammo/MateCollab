@@ -1,5 +1,5 @@
 // Go task runner used by the root package scripts.
-//   fmt | fmt-check | lint | test | integration | build | vuln
+//   fmt | fmt-check | lint | test | integration | build | vuln | sqlc | sqlc-check
 //
 // `integration` starts a throwaway PostgreSQL container on a random loopback port (roles are
 // cluster-wide, so tests never touch the development database) and, when the local stack is
@@ -24,6 +24,14 @@ import {
 
 // Pinned tool versions (bump deliberately).
 const GOVULNCHECK = 'golang.org/x/vuln/cmd/govulncheck@v1.8.0';
+// sqlc runs from its official image so contributors need no local install; keep tag and digest together.
+const SQLC_IMAGE = 'sqlc/sqlc:1.31.1@sha256:70f53171d27b2424e9358869975455a6e955a5aa8e58a998a270a6e34e525537';
+
+// generate | diff: db/queries → services/internal/*/store (see services/sqlc.yaml).
+const sqlc = (action) =>
+  run('docker', ['run', '--rm', '-v', `${ROOT}:/src`, '-w', '/src/services', SQLC_IMAGE, action], {
+    env: { ...process.env, MSYS_NO_PATHCONV: '1' },
+  });
 // staticcheck v0.8.1 cannot read Go 1.27 export data yet; add it to `lint` once a compatible release ships.
 
 const go = (args, env = goEnv()) => run('go', args, { cwd: SERVICES, env });
@@ -151,7 +159,17 @@ main(async () => {
     case 'vuln':
       await go(['run', GOVULNCHECK, './...']);
       break;
+    case 'sqlc':
+      await sqlc('generate');
+      log.ok('sqlc code regenerated');
+      break;
+    case 'sqlc-check':
+      await sqlc('diff');
+      log.ok('sqlc code is up to date');
+      break;
     default:
-      throw new ScriptError('Usage: node scripts/go.mjs fmt|fmt-check|lint|test|integration|build|vuln');
+      throw new ScriptError(
+        'Usage: node scripts/go.mjs fmt|fmt-check|lint|test|integration|build|vuln|sqlc|sqlc-check',
+      );
   }
 });

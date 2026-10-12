@@ -1,0 +1,70 @@
+# Typed query code (ADR-003). Each module's queries live in db/queries/<module>/ and generate
+# its private store package; only that module may import it (BACKEND.md §2).
+# Regenerate with `pnpm gen` (runs the pinned sqlc image; generated code is committed).
+version: "2"
+overrides:
+  go:
+    overrides:
+      - db_type: uuid
+        go_type: github.com/google/uuid.UUID
+      - db_type: uuid
+        nullable: true
+        go_type:
+          import: github.com/google/uuid
+          type: UUID
+          pointer: true
+      - db_type: timestamptz
+        go_type: time.Time
+      - db_type: timestamptz
+        nullable: true
+        go_type:
+          type: time.Time
+          pointer: true
+      - db_type: inet
+        go_type: net/netip.Addr
+      - db_type: inet
+        nullable: true
+        go_type:
+          import: net/netip
+          type: Addr
+          pointer: true
+      - db_type: jsonb
+        go_type: encoding/json.RawMessage
+sql:
+  - &module
+    engine: postgresql
+    schema: ../db/migrations
+    queries: ../db/queries/auth
+    gen:
+      go: &gogen
+        package: store
+        out: internal/auth/store
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        emit_empty_slices: true
+        emit_result_struct_pointers: false
+        omit_unused_structs: true
+  - <<: *module
+    queries: ../db/queries/users
+    gen:
+      go:
+        <<: *gogen
+        out: internal/users/store
+  - <<: *module
+    queries: ../db/queries/orgs
+    gen:
+      go:
+        <<: *gogen
+        out: internal/orgs/store
+  - <<: *module
+    queries: ../db/queries/memberships
+    gen:
+      go:
+        <<: *gogen
+        out: internal/memberships/store
+  - <<: *module
+    queries: ../db/queries/audit
+    gen:
+      go:
+        <<: *gogen
+        out: internal/audit/store

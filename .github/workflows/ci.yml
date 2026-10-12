@@ -87,6 +87,11 @@ jobs:
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - name: Vet
         run: go vet ./... && go vet -tags integration ./...
+      - name: Database query code generated (sqlc)
+        # Same pinned image as `pnpm sql:check` (scripts/go.mjs); update both together.
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src/services
+          sqlc/sqlc:1.31.1@sha256:70f53171d27b2424e9358869975455a6e955a5aa8e58a998a270a6e34e525537 diff
       - name: Unit and contract tests
         run: go test -race -count=1 ./...
       - name: Integration tests (PostgreSQL, Valkey, Mailpit)
