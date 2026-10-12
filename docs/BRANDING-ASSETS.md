@@ -148,7 +148,7 @@ Icon + HemiHead wordmark, `viewBox 0 0 1670 320`. SVG plus PNG at 1024, 2048 and
 | Prototype | Library (wins) | Resolution |
 |---|---|---|
 | Mark: two forward-leaning forms (`public/brand/*.svg`, inline `Logo` component) | Four sharp L corners + centred square | Replace every prototype mark with Library assets |
-| Primary blue `#2463EB` (buttons, links, focus, active states) | Violet `#7047D1` | Product accent becomes Violet (decision **ADR-008**, needs approval — see [DECISIONS.md](architecture/DECISIONS.md)) |
+| Primary blue `#2463EB` (buttons, links, focus, active states) | Violet `#7047D1` | Product accent becomes Violet (decision **ADR-008**, accepted — see [DECISIONS.md](architecture/DECISIONS.md)) |
 | Navy `#152235` / rail `#142236` | Navy `#101A2D` | Rail and brand navy surfaces use `#101A2D` |
 | Live-text wordmark rendered with `@font-face HemiHead` | Outlined lettering in SVG lockups | Use SVG lockups; do not serve the font |
 | `HemiHead-Bold.otf` shipped in `public/fonts/` and base64-embedded in `MateCollab-Prototype.html` | No font in the Library | Do not distribute the font (see §8) |

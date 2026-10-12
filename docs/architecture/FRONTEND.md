@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Status: Phase 0 proposal · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--needs-approval), [ADR-009](DECISIONS.md#adr-009--typography)
+Status: Phase 0 proposal · Related: [PHASE-0-AUDIT.md](PHASE-0-AUDIT.md), [BRANDING-ASSETS.md](../BRANDING-ASSETS.md), [ADR-007](DECISIONS.md#adr-007--nextjs-is-ui-only), [ADR-008](DECISIONS.md#adr-008--brand-accent-violet-replaces-prototype-blue--accepted), [ADR-009](DECISIONS.md#adr-009--typography)
 
 The production web app must **faithfully preserve the approved MateCollab-UI visual language** — adaptive three-panel layout, premium restrained styling, light and dark parity — while replacing the prototype's simulation internals with production architecture.
 

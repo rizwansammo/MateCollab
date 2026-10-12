@@ -1,6 +1,8 @@
 # Architecture Decision Record
 
-Status legend: **Accepted** (matches the brief) · **Proposed** (recommended refinement, low risk) · **Needs approval** (deviates from the brief or changes the approved look; do not implement until a human approves).
+Status legend: **Accepted** (approved for implementation) · **Proposed** (recommended refinement, low risk, adopted unless implementation shows otherwise).
+
+Phase 0 was approved on 2026-10-12, including ADR-004, ADR-008, ADR-010, ADR-011, ADR-020 and ADR-022 and the guest policy recorded in ADR-025.
 
 Each record: context → decision → consequences. New decisions are appended; superseded ones are marked, never deleted.
 
@@ -13,14 +15,14 @@ Each record: context → decision → consequences. New decisions are appended; 
 | ADR-001 | Modular monolith: one Go module, binaries `api`, `worker`, `mcctl` | Accepted (refined layout) |
 | ADR-002 | Organisation in every API path; isolation via composite FKs + PostgreSQL RLS | Proposed |
 | ADR-003 | PostgreSQL 18, UUIDv7 keys, goose migrations, sqlc + pgx | Proposed |
-| ADR-004 | Background jobs on PostgreSQL (River) instead of Redis Streams | **Needs approval** |
+| ADR-004 | Background jobs on PostgreSQL (River) instead of Redis Streams | **Accepted** |
 | ADR-005 | Realtime: post-commit Redis pub/sub; `seq`/`thread_seq` for placement, per-conversation `change_seq` change feed for convergence | Proposed |
 | ADR-006 | Channels are conversations; read state as cursors; Activity derived from notifications | Proposed |
 | ADR-007 | Next.js renders UI only; the Go API is the only backend; one origin via Nginx | Proposed |
-| ADR-008 | Product accent switches from prototype blue to Library Violet/Navy | **Needs approval** |
+| ADR-008 | Product accent switches from prototype blue to Library Violet/Navy | **Accepted** |
 | ADR-009 | Inter (self-hosted, OFL) for UI text; HemiHead only via SVG lockups | Proposed |
-| ADR-010 | S3 API everywhere; MinIO for local dev only, pinned; production storage chosen separately | **Needs approval** |
-| ADR-011 | Redis-compatible server: Valkey 8 (BSD) recommended over Redis 8 | **Needs approval** |
+| ADR-010 | S3 API everywhere; MinIO for local dev only, pinned; production storage chosen separately | **Accepted** |
+| ADR-011 | Redis-compatible server: Valkey 8 through the Redis protocol | **Accepted** |
 | ADR-012 | WebSocket: `coder/websocket`, cookie + single-use ticket + Origin check, subprotocol `mc.v1` | Proposed |
 | ADR-013 | REST `/api/v1`, OpenAPI contract-first, Problem Details errors, cursor pagination | Proposed |
 | ADR-014 | Server-side sessions, Argon2id, TOTP + recovery codes, CSRF header; no JWT browser sessions | Accepted |
@@ -29,11 +31,12 @@ Each record: context → decision → consequences. New decisions are appended; 
 | ADR-017 | LiveKit self-hosted; explicit room creation; waiting room by deferring tokens; identity = user ID | Proposed |
 | ADR-018 | Search on PostgreSQL FTS (`simple` config) + `pg_trgm`, behind a swappable interface | Proposed |
 | ADR-019 | Support context = immutable snapshot of explicitly selected items | Proposed |
-| ADR-020 | Email notifications exclude message content by default | **Needs approval** (product) |
+| ADR-020 | Email notifications exclude message content by default | **Accepted** |
 | ADR-021 | Phase sequence adjustments (mailer in Phase 2, security foundations early) | Proposed |
-| ADR-022 | V1 ships the HelpDesk connector architecture + SMTP connector; MateDesk native connector when its API exists | **Needs approval** (product) |
+| ADR-022 | V1 ships the HelpDesk connector architecture + SMTP connector; MateDesk native connector when its API exists | **Accepted** |
 | ADR-023 | Presence, status text and the visible email address are per organisation | Proposed |
-| ADR-024 | Target Go 1.27 (Go 1.25 is out of security support) | Proposed |
+| ADR-024 | Target Go 1.27 (Go 1.25 is out of security support) | **Accepted** |
+| ADR-025 | Guest policy: granted Spaces; invited meetings when allowed; guest DMs off by default | **Accepted** |
 
 ---
 
@@ -59,7 +62,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Consequences.** No ORM magic; migrations reviewable as SQL; sqlc catches query/schema drift at build time.
 
-## ADR-004 — Background jobs on PostgreSQL (River) instead of Redis Streams — *needs approval*
+## ADR-004 — Background jobs on PostgreSQL (River) instead of Redis Streams — *accepted*
 
 **Context.** The brief suggests "Redis Streams or an equivalently simple Redis-backed approach". Background work (notification fanout, emails, malware scans, HelpDesk delivery, reminders, retention) must not be lost and must be triggered exactly when the originating transaction commits. With Redis Streams we would also need an outbox table, a relay process, consumer-group reclaim logic, a dead-letter path and a separate scheduler for delayed jobs.
 
@@ -85,7 +88,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Consequences.** One backend to secure and test; no CORS; cookies stay `SameSite=Lax` and `HttpOnly`.
 
-## ADR-008 — Brand accent: Violet replaces prototype blue — *needs approval*
+## ADR-008 — Brand accent: Violet replaces prototype blue — *accepted*
 
 **Context.** The prototype's primary colour (`#2463EB`) and logo conflict with the Logo Library (Violet `#7047D1`, Navy `#101A2D`). The brief says the Library wins on branding conflicts.
 
@@ -99,7 +102,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Consequences.** Consistent rendering across platforms (the prototype silently fell back to Arial on macOS). No font-licensing exposure.
 
-## ADR-010 — Object storage — *needs approval*
+## ADR-010 — Object storage — *accepted*
 
 **Context.** The brief names MinIO for local development. The upstream `minio/minio` repository was archived on 25 April 2026 and marked "no longer maintained"; community container images stopped being published in October 2025.
 
@@ -107,7 +110,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Consequences.** No vendor lock-in; local dev unchanged. Decision needed: approve MinIO-for-dev-only and choose the production storage provider before Phase 12.
 
-## ADR-011 — Redis-compatible server — *needs approval*
+## ADR-011 — Redis-compatible server — *accepted*
 
 **Context.** Redis 7.4+ is RSALv2/SSPLv1, and Redis 8 adds AGPLv3 as an option; Valkey (Linux Foundation fork of Redis 7.2) remains BSD-licensed and protocol-compatible. MateCollab uses only core features (pub/sub, strings with TTL, sets, sorted sets, Lua for rate limiting).
 
@@ -149,7 +152,7 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Decision.** When a support request includes conversation context, the API copies exactly the selected message (or the selected thread's root and replies) into `support_request_context_items` at creation time, after re-checking access. The copy is what is sent to the HelpDesk and what the request page shows. Nothing else from the conversation is ever transmitted. See [SUPPORT-AND-INTEGRATIONS.md](SUPPORT-AND-INTEGRATIONS.md).
 
-## ADR-020 — Email notification content — *needs approval (product)*
+## ADR-020 — Email notification content — *accepted*
 
 **Decision.** Email notifications say *what happened and where* ("Ayesha mentioned you in #general") but exclude message text by default. Organisations may opt in to short previews. Rationale: email leaves the organisation's control boundary.
 
@@ -157,13 +160,13 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 **Decision.** Keep the brief's phase order with these changes: platform mailer and background jobs move into Phases 1–2 (authentication needs email); security foundations (headers, CSRF, rate limiting, audit framework, CI scanning) start in Phases 1–2; search columns are created with their tables; DMs and group chats are explicit in Phase 4; Home is assembled incrementally. Details: [PHASES.md](../development/PHASES.md#changes-from-the-proposed-sequence).
 
-## ADR-022 — V1 HelpDesk connector scope — *needs approval (product)*
+## ADR-022 — V1 HelpDesk connector scope — *accepted*
 
 **Context.** The brief requires a native HelpDesk/API connector *architecture* plus an SMTP fallback, with MateDesk "supported later through a native connector". MateDesk does not yet expose an API to integrate with.
 
 **Decision.** V1 ships the connector framework (registry, capability flags, encrypted credentials, delivery jobs, webhooks/polling, delivery log), the SMTP connector, and a mock HelpDesk connector in tests that exercises the full native contract. The MateDesk connector is built as soon as its API is available.
 
-**Consequences.** No native two-way HelpDesk sync at V1 launch unless another helpdesk (e.g. Zendesk, Freshdesk, Jira Service Management) is chosen as a first real connector. Decision needed: is SMTP-only acceptable at launch, or should one third-party connector be added to Phase 11?
+**Consequences.** No native two-way HelpDesk sync at V1 launch; V1 includes SMTP delivery, connector capability handling, encrypted credentials, delivery jobs, the webhook/polling architecture, delivery logs and mock native-connector tests. The MateDesk connector follows its API.
 
 ## ADR-023 — Per-organisation presence, status and visible email
 
@@ -183,13 +186,17 @@ Each record: context → decision → consequences. New decisions are appended; 
 
 ---
 
+## ADR-025 — Guest policy — *accepted*
+
+**Decision.** Guests are limited to explicitly granted Spaces (and the channels they may read there). Two organisation-controlled exceptions exist: guests may join meetings they are explicitly invited to when `meetings.guest_access` allows it, and guests may exchange direct messages only with users who share an accessible Space, controlled by `messaging.guest_direct_messages`, which **defaults to off**. Guests cannot create or be added to group chats. All guest access goes through the standard tenant isolation and authorization model.
+
+---
+
 ## Open questions (need product or business input)
 
-1. Approve ADR-004, ADR-008, ADR-010, ADR-011, ADR-020, ADR-022.
-2. Guest scope beyond their Spaces: are guest DMs (with people who share a Space) and explicit meeting invitations acceptable as organisation-controlled options, or must guests be strictly limited to their Spaces? (Default proposal: allowed, both switchable off per organisation.)
-3. Organisation sign-up model for V1: invite-only with operator-created organisations, or self-service organisation creation? (Default proposal: operator-created via `mcctl`, self-service behind a flag.)
-4. Message edit history: retain revisions for compliance (default proposal: yes, org-configurable, subject to retention)?
-5. Breached-password checks: allow outbound k-anonymity calls to Have I Been Pwned, or use an offline list only?
-6. Target production hosting (single VM, cloud provider, on-premises customer deployments?) — affects storage, TURN and backup design.
-7. GitHub organisation/repository for the production codebase (affects the Go module path and CI).
-8. Brand-owner requests in [BRANDING-ASSETS.md §7](../BRANDING-ASSETS.md#7-gaps--requests-for-the-brand-owner-no-engineering-workaround).
+1. Organisation sign-up model for V1: invite-only with operator-created organisations, or self-service organisation creation? (Default: operator-created via `mcctl`, self-service behind a flag.)
+2. Message edit history: retain revisions for compliance (default: yes, org-configurable, subject to retention)?
+3. Breached-password checks: allow outbound k-anonymity calls to Have I Been Pwned, or use an offline list only?
+4. Target production hosting (single VM, cloud provider, on-premises customer deployments?) — affects storage, TURN and backup design.
+5. Production object storage provider (ADR-010).
+6. Brand-owner requests in [BRANDING-ASSETS.md §7](../BRANDING-ASSETS.md#7-gaps--requests-for-the-brand-owner-no-engineering-workaround).

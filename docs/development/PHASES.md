@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status: Phase 0 complete — **awaiting approval**. No phase starts without explicit approval of the previous one.
+Status: Phase 0 approved (2026-10-12); production foundation and design system in progress. No phase starts without explicit approval of the previous one.
 
 Each phase ends with: working software behind the documented exit criteria, green CI (including tenant-isolation, permission and security suites for everything the phase adds), updated documentation, and a phase report.
 
@@ -48,10 +48,10 @@ Phases 6 and 7 can overlap if two engineers are available; 10 is small and can m
 
 ---
 
-## Phase 0 — Architecture and audit ✅ (pending approval)
+## Phase 0 — Architecture and audit ✅ (approved)
 
 * Workspace, prototype and Logo Library audit; architecture, data model, API/event contracts, security baseline, local development, testing and this roadmap.
-* **Exit:** human approval of the documents and of the decisions marked *Needs approval* in [DECISIONS.md](../architecture/DECISIONS.md).
+* **Exit:** approved 2026-10-12 together with ADR-004, ADR-008, ADR-010, ADR-011, ADR-020, ADR-022 and ADR-025.
 
 ## Phase 1 — Production foundation and design system
 

@@ -111,7 +111,7 @@ type Capabilities struct {
 
 ### 4.4 MateDesk connector (later)
 
-Planned as the first native connector once MateDesk exposes a stable API: OAuth2 client-credentials or scoped API token; create ticket with requester identity; comments both ways; attachments; status webhooks. Until then the HelpDesk tab shows MateDesk as "Native API (coming soon)" and SMTP as available. A mock HelpDesk server in tests exercises the full connector contract. V1 therefore ships the **connector architecture plus the SMTP connector**; whether any other HelpDesk must work natively at launch is a product decision ([ADR-022](DECISIONS.md#adr-022--v1-helpdesk-connector-scope--needs-approval-product)).
+Planned as the first native connector once MateDesk exposes a stable API: OAuth2 client-credentials or scoped API token; create ticket with requester identity; comments both ways; attachments; status webhooks. Until then the HelpDesk tab shows MateDesk as "Native API (coming soon)" and SMTP as available. A mock HelpDesk server in tests exercises the full connector contract. V1 therefore ships the **connector architecture plus the SMTP connector**; whether any other HelpDesk must work natively at launch is a product decision ([ADR-022](DECISIONS.md#adr-022--v1-helpdesk-connector-scope--accepted)).
 
 ### 4.5 Destinations without an organisation SMTP server
 

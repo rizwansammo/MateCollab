@@ -2,7 +2,7 @@
 
 MateCollab is NetaMate Solutions' enterprise collaboration platform: messaging, Spaces and channels, calls, huddles and meetings, files, search, notifications, action items and support requests from conversations — simpler than Slack, Teams or Discord by design.
 
-**Current status:** Phase 0 (architecture, audit and planning) is complete and **awaiting approval**. No production code exists yet. See [development/PHASES.md](development/PHASES.md).
+**Current status:** Phase 0 (architecture, audit and planning) is approved. Production foundation work is under way. See [development/PHASES.md](development/PHASES.md).
 
 ## Sources of truth
 
@@ -16,7 +16,7 @@ MateCollab is NetaMate Solutions' enterprise collaboration platform: messaging, 
 ## Suggested reading order
 
 1. [architecture/OVERVIEW.md](architecture/OVERVIEW.md) — system context, modules, key flows, technology choices
-2. [architecture/DECISIONS.md](architecture/DECISIONS.md) — what was decided, what still needs approval
+2. [architecture/DECISIONS.md](architecture/DECISIONS.md) — what was decided and why
 3. [development/PHASES.md](development/PHASES.md) — roadmap and exit criteria
 4. Topic documents as needed (below)
 
@@ -27,7 +27,7 @@ MateCollab is NetaMate Solutions' enterprise collaboration platform: messaging, 
 | Document | Contents |
 |---|---|
 | [OVERVIEW.md](architecture/OVERVIEW.md) | Scope, principles, containers, module map, key flows, consistency model, technology choices, NFR targets |
-| [DECISIONS.md](architecture/DECISIONS.md) | Architecture decision record (ADR-001 … ADR-024) and open questions |
+| [DECISIONS.md](architecture/DECISIONS.md) | Architecture decision record (ADR-001 … ADR-025) and open questions |
 | [PHASE-0-AUDIT.md](architecture/PHASE-0-AUDIT.md) | Workspace audit, prototype audit (keep / adapt / discard), defects to correct |
 | [FRONTEND.md](architecture/FRONTEND.md) | Next.js architecture, routes, shell layout, design tokens, theming, markup, accessibility, performance |
 | [BACKEND.md](architecture/BACKEND.md) | Go modular monolith, module catalogue, layering, jobs, notifications, search, email, configuration |

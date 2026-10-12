@@ -308,7 +308,7 @@ Organisation settings sections (initial keys, defaults from the prototype's admi
 | Section | Keys |
 |---|---|
 | `security` | `require_2fa` (false), `session_max_age` — **absolute** maximum age of a session used with this organisation (`30d` default = platform cap; options 12h/24h/7d/30d), `allow_guest_invites` (true), `invite_permission` (`admins` \| `members`) |
-| `messaging` | `public_space_creation` / `private_space_creation` (`all` \| `admins`), `edit_window` (`any` \| `24h` \| `disabled`), `deletion` (`own` \| `admins`), `retention` (`forever` \| `90d` \| `1y`), `guest_messaging` (true), `keep_edit_history` (true) |
+| `messaging` | `public_space_creation` / `private_space_creation` (`all` \| `admins`), `edit_window` (`any` \| `24h` \| `disabled`), `deletion` (`own` \| `admins`), `retention` (`forever` \| `90d` \| `1y`), `guest_messaging` (true — guests may post in their granted Spaces), `guest_direct_messages` (**false** — ADR-025), `keep_edit_history` (true) |
 | `meetings` | `guest_access` (true), `waiting_room_default` (true), `who_can_start` (`all` \| `admins`), `screen_share` (`all` \| `host`), `default_duration` (30), `join_muted` (true) |
 | `files` | `max_upload_mb` (25; 50; 100), `blocked_extensions` (`exe,bat,cmd,…`), `retention` (`forever` \| `1y` \| `90d`), `guest_file_access` (true), `storage_quota_gb` |
 | `notifications` | `email_enabled` (true), `email_include_previews` (false — ADR-020), `email_delay_minutes` (15) |

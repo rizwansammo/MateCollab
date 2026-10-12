@@ -1,6 +1,6 @@
 # MateCollab Production Architecture — Overview
 
-Status: Phase 0 proposal (pending approval) · Last updated: 2026-10-12
+Status: Approved production architecture (Phase 0 approved 2026-10-12)
 
 MateCollab is an enterprise collaboration platform by NetaMate Solutions: direct and group messaging, Spaces with channels, threads, calls, huddles and meetings, files, search, notifications, lightweight action items, and support requests raised from conversations. It takes the useful parts of Slack, Microsoft Teams and Discord while staying deliberately simpler. It is **not** a community platform, social network or project-management suite.
 

@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Status: Phase 0 proposal · Language: Go 1.27 (Go 1.25 left security support in August 2026) · Related: [ADR-001](DECISIONS.md#adr-001--modular-monolith-in-a-single-go-module), [ADR-004](DECISIONS.md#adr-004--background-jobs-on-postgresql-river-instead-of-redis-streams--needs-approval), [MULTITENANCY.md](MULTITENANCY.md), [DATABASE.md](DATABASE.md)
+Status: Phase 0 proposal · Language: Go 1.27 (Go 1.25 left security support in August 2026) · Related: [ADR-001](DECISIONS.md#adr-001--modular-monolith-in-a-single-go-module), [ADR-004](DECISIONS.md#adr-004--background-jobs-on-postgresql-river-instead-of-redis-streams--accepted), [MULTITENANCY.md](MULTITENANCY.md), [DATABASE.md](DATABASE.md)
 
 ---
 

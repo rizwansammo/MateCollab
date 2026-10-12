@@ -209,7 +209,7 @@ Permissions are named constants in `internal/authz`; roles map to permissions in
 ³ "Allow guest invitations" must be on; only Owner/Admin may invite guests.
 ⁴ Admins cannot change, suspend or deactivate the Owner or other Admins.
 ⁵ `messaging.public_space_creation` / `private_space_creation` = `all` (default) or `admins`.
-⁶ Requires organisation setting `messaging.guest_messaging` and the recipient's personal privacy setting "Allow direct messages from guests"; only with people who share a Space with the guest.
+⁶ Requires organisation setting `messaging.guest_direct_messages` (default **off**, ADR-025) and the recipient's personal privacy setting "Allow direct messages from guests"; only with people who share an accessible Space with the guest.
 ⁷ `meetings.who_can_start` = `all` (default) or `admins`.
 ⁸ `files.guest_file_access`.
 ⁹ `support.members_can_create` (default on), `support.guests_can_create` (default off).
@@ -244,7 +244,7 @@ Permissions are named constants in `internal/authz`; roles map to permissions in
 
 * Access is granted per Space (`space_members` rows created from `invitation_space_grants` on acceptance).
 * Guests see only Spaces they are granted, the public channels in those Spaces, and private channels they are explicitly added to.
-* Outside their Spaces, guests can only (a) exchange DMs with people who share a Space with them, when the organisation and the other person allow it, and (b) join meetings they are explicitly invited to, when guest meeting access is on. Both are organisation settings; turning them off restricts guests to their Spaces only. *(Confirmation requested in [DECISIONS.md](DECISIONS.md#open-questions-need-product-or-business-input).)*
+* Outside their Spaces, guests can only (a) exchange DMs with people who share a Space with them, when the organisation and the other person allow it, and (b) join meetings they are explicitly invited to, when guest meeting access is on. Both are organisation settings; turning them off restricts guests to their Spaces only. *(Approved policy: [ADR-025](DECISIONS.md#adr-025--guest-policy--accepted); guest DMs default to off.)*
 * Guests see presence, profiles and display names only for people who share a Space with them; they never see email addresses or the organisation directory.
 * Search, files, meetings, Activity and notifications are all filtered through the same access rules — there is no guest-specific code path that could forget a filter.
 * Guests cannot create Spaces or groups, be added to groups, schedule meetings, invite anyone, or view administration.

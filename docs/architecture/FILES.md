@@ -1,6 +1,6 @@
 # Files and Object Storage
 
-Status: Phase 0 proposal · Related: [ADR-010](DECISIONS.md#adr-010--object-storage--needs-approval), [ADR-015](DECISIONS.md#adr-015--malware-scanning), [DATABASE.md §4.5](DATABASE.md#45-files)
+Status: Phase 0 proposal · Related: [ADR-010](DECISIONS.md#adr-010--object-storage--accepted), [ADR-015](DECISIONS.md#adr-015--malware-scanning), [DATABASE.md §4.5](DATABASE.md#45-files)
 
 ---
 
@@ -180,7 +180,7 @@ Rename/delete: uploader; delete any: organisation Owner/Admin (audit-logged).
 
 ## 10. Local development (MinIO)
 
-* MinIO's upstream repository is archived; local development uses the **last published community image, pinned by digest**, bound to `127.0.0.1` only. See [ADR-010](DECISIONS.md#adr-010--object-storage--needs-approval).
+* MinIO's upstream repository is archived; local development uses the **last published community image, pinned by digest**, bound to `127.0.0.1` only. See [ADR-010](DECISIONS.md#adr-010--object-storage--accepted).
 * `mcctl storage init` creates the bucket, lifecycle rules and (on providers that support it) bucket CORS limited to `MC_PUBLIC_URL`. MinIO uses its server-wide CORS setting, configured in Compose to the local app origin.
 * Console (port 9001) is available for inspection; features of the community console were reduced in 2025 and are not relied upon.
 
