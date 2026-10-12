@@ -24,3 +24,9 @@
 pnpm-lock.yaml linguist-generated=true -diff
 packages/contracts/src/generated/** linguist-generated=true
 services/go.sum linguist-generated=true
+
+# Brand files are byte-for-byte copies of the Logo Library, verified by SHA-256
+# (scripts/brand-sync.mjs): never normalise their line endings.
+MateCollab-Logo-Library/** -text
+apps/web/public/brand/** -text
+apps/web/app/icon.svg -text

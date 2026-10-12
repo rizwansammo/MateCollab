@@ -1,0 +1,60 @@
+{
+  "$comment": "Curated Library assets used by the product (docs/BRANDING-ASSETS.md §5). Paths are relative to the Library root and the repository root. sha256 is the approved Library content; scripts/brand-sync.mjs refuses to copy a Library file whose content changed until the change is accepted with --accept.",
+  "library": "MateCollab-Logo-Library/MateCollab-Logo-Library",
+  "assets": [
+    {
+      "source": "icons/transparent-white/transparent-white.svg",
+      "target": "apps/web/public/brand/icons/transparent-white.svg",
+      "use": "Rail brand button (white mark on Navy), dark surfaces",
+      "sha256": "f67106b273564d7e88f07dcf546ed9ebacae1a41c9b8b839ea8587c5fff779bf"
+    },
+    {
+      "source": "icons/transparent-violet/transparent-violet.svg",
+      "target": "apps/web/public/brand/icons/transparent-violet.svg",
+      "use": "Mark on light surfaces",
+      "sha256": "0cbe10b2e531366e996753d594a8f8652b9e3e32b4428117521d7599b1c3bc87"
+    },
+    {
+      "source": "lockups/MateCollab-transparent.svg",
+      "target": "apps/web/public/brand/lockups/MateCollab-transparent.svg",
+      "use": "Lockup, light theme (sidebar footer, sign-in)",
+      "sha256": "0032b71ec9caee3b3b323dc0dd409930aa10f49aab4eec216d33367582230352"
+    },
+    {
+      "source": "lockups/MateCollab-white.svg",
+      "target": "apps/web/public/brand/lockups/MateCollab-white.svg",
+      "use": "Lockup, dark theme",
+      "sha256": "9c07d1046e6d3fad2a60768b3a613cc1341d2ebfee2db7a5b2a3aae9a80d8553"
+    },
+    {
+      "source": "favicons/favicon.svg",
+      "target": "apps/web/app/icon.svg",
+      "use": "SVG favicon (Next.js icon file convention)",
+      "sha256": "0cbe10b2e531366e996753d594a8f8652b9e3e32b4428117521d7599b1c3bc87"
+    },
+    {
+      "source": "favicons/transparent-violet.ico",
+      "target": "apps/web/app/favicon.ico",
+      "use": "Legacy favicon (16–256 px)",
+      "sha256": "d9a26f793a89781fd643b4d095e1162d981c3c16720fa8d336b8a234148c4f57"
+    },
+    {
+      "source": "favicons/apple-touch-icon.png",
+      "target": "apps/web/app/apple-icon.png",
+      "use": "iOS home screen icon (180 px)",
+      "sha256": "dd279d7fccc60406643aae3779428b530182fa1ea0d7dbbd5661eda88f2f1d04"
+    },
+    {
+      "source": "favicons/icon-192.png",
+      "target": "apps/web/public/brand/favicons/icon-192.png",
+      "use": "Web app manifest icon",
+      "sha256": "5ce7144c54129ef1e807dbb93513f71bbb0119158aacf60f0fdbdc0a6b875e55"
+    },
+    {
+      "source": "favicons/icon-512.png",
+      "target": "apps/web/public/brand/favicons/icon-512.png",
+      "use": "Web app manifest icon",
+      "sha256": "7113b7a76f5e5b65eeb93844b3feb2ceb4cbd1a492172d9339a026a89b58274c"
+    }
+  ]
+}

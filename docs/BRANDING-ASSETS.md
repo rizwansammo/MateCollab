@@ -1,6 +1,6 @@
 # MateCollab Branding Assets
 
-Status: Phase 0 inventory · Source of truth: `MateCollab-Logo-Library/`
+Status: Inventory + implemented sync · Source of truth: `MateCollab-Logo-Library/`
 
 > **Authority rule.** `MateCollab-Logo-Library` is the only approved source of MateCollab logos and brand colours. Where the MateCollab-UI prototype differs, **the Library wins**. Production code must never redraw, re-colour, re-space or approximate the mark or wordmark.
 
@@ -32,7 +32,7 @@ Usage rules from the Library README (normative):
 
 ```
 MateCollab/
-└─ MateCollab-Logo-Library/            ← top folder (untracked in git today)
+└─ MateCollab-Logo-Library/            ← top folder (committed; read-only for tooling)
    └─ MateCollab-Logo-Library/         ← actual library root (double-nested)
       ├─ README.md
       ├─ MateCollab-Violet-Preview.jpg
@@ -136,9 +136,10 @@ Icon + HemiHead wordmark, `viewBox 0 0 1670 320`. SVG plus PNG at 1024, 2048 and
 
 ### Implementation rules
 
-* Assets are consumed by a **build-time sync script** (Phase 1) that copies a curated, listed subset from the Library into `apps/web/public/brand/` and the Next.js icon slots, verifying SHA-256 hashes against the Library. CI fails if a copied asset diverges from its Library source. The Library itself is never edited by tooling.
+* Assets are consumed by a **sync script**, `pnpm brand:sync` (`scripts/brand-sync.mjs`), that copies the curated subset listed in `scripts/brand-assets.json` from the Library into `apps/web/public/brand/` (served at `/brand`) and the Next.js icon slots (`apps/web/app/icon.svg`, `favicon.ico`, `apple-icon.png`). Each entry records the approved SHA-256 of the Library file; the script refuses to copy a Library file whose content changed until the change is accepted with `pnpm brand:sync --accept`, and verifies every copy after writing. `pnpm brand:check` (CI) writes nothing and fails on a missing or modified copy, a changed Library file, or any HemiHead font file under `apps/` or `packages/`. The Library is only ever read; `.gitattributes` disables line-ending normalisation for the Library and the copies so hashes match on every platform.
+* Currently synced: `transparent-white.svg` and `transparent-violet.svg` marks, `MateCollab-transparent.svg` and `MateCollab-white.svg` lockups, `favicon.svg`, `transparent-violet.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`. The web app manifest (`apps/web/app/manifest.ts`) uses the Library's `site.webmanifest` values (`theme_color #7047D1`, `background_color #101A2D`, `standalone`) with corrected icon paths.
 * SVGs are rendered as `<img>` or inlined **unchanged** (no colour overrides via CSS `fill`, no path edits). Theme switching selects a different Library file; it never recolours one.
-* The `<BrandLockup>` and `<BrandMark>` components are the only way application code renders the brand, which keeps every usage auditable.
+* The `<BrandLockup>` and `<BrandMark>` components (`packages/ui/src/components/brand.tsx`) are the only way application code renders the brand, which keeps every usage auditable. With `variant="theme"` they render both Library files and let CSS show the one matching the resolved theme, so there is no flash and no recolouring.
 * Minimum rendered sizes: mark ≥ 16 px (validated in the Library preview); lockup ≥ 18 px tall.
 
 ---
