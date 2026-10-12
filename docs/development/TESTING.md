@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Status: Phase 0 plan · Related: [PHASES.md](PHASES.md), [SECURITY-BASELINE.md](../security/SECURITY-BASELINE.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
+Status: Strategy + implemented foundation gates (see “Running the tests”) · Related: [PHASES.md](PHASES.md), [SECURITY-BASELINE.md](../security/SECURITY-BASELINE.md), [MULTITENANCY.md](../architecture/MULTITENANCY.md)
 
 Tests are part of every phase's definition of done. A feature without its tenant-isolation and permission tests is not finished.
 
@@ -13,6 +13,43 @@ Tests are part of every phase's definition of done. A feature without its tenant
 * **Deterministic.** Injected clock, seeded randomness, no fixed sleeps (poll with timeouts).
 * **Leak-detecting data.** Factories embed unique tokens per organisation so any cross-tenant leak is detectable by string search.
 * **Fictional data only.** No production or personal data in fixtures, ever.
+
+## Running the tests (implemented)
+
+| Command | What it runs | Needs |
+|---|---|---|
+| `pnpm check` | Every gate that needs no Docker, with a summary: Prettier, gofmt, ESLint + Redocly, `go vet` (default and `integration` build tags), TypeScript, Vitest (web, design system, contracts), Go unit + contract tests, generated-contract freshness, brand-asset hashes, licence policy | Node, Go |
+| `pnpm test:go:integration` | Go integration tests (`-tags integration`): roles and bootstrap, migrations up/down/up, RLS isolation and fail-closed behaviour, runtime-role restrictions, transactional River enqueue, Valkey, MinIO (put/head/presigned download), Mailpit delivery | Docker. A throwaway PostgreSQL 18 container on a random loopback port (roles are cluster-wide, so tests never touch the dev database); Valkey, MinIO and Mailpit from `pnpm infra:up` — their tests skip, with a warning, when the stack is down |
+| `pnpm visual:test` (`visual:update` to re-baseline) | Every Storybook story in light and dark: screenshot compared with `packages/ui/visual/baseline`, then axe with the WCAG 2.0/2.1/2.2 A and AA rule sets (including colour contrast). Stories tagged `novisual` are skipped; `vp-<width>` sets the viewport for shell stories | Docker. Runs in the pinned Playwright image (`packages/ui/visual/runner`), so baselines are identical on Windows, macOS, Linux and CI. Report: `packages/ui/visual/.results/report` |
+| `pnpm audit:deps` | `pnpm audit --audit-level high` + govulncheck | Network |
+| `pnpm licenses` | npm and Go licence allow-list (strong copyleft and unknown licences fail) | — |
+| `pnpm doctor` | Connectivity and schema check of PostgreSQL, Valkey, object storage, SMTP and LiveKit | Local stack |
+
+Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts WCAG contrast for every token pairing in both themes; `services/internal/apiserver/contract_test.go` validates real API responses against the bundled OpenAPI schemas; `packages/contracts/test` validates every OpenAPI example and the documented WebSocket frames.
+
+### Full Docker verification
+
+`pnpm dev:docker` builds the production images (`infra/docker/go.Dockerfile` targets `api`, `worker`, `mcctl`; `infra/docker/web.Dockerfile`), runs `mcctl prepare` in the one-shot `migrate` container and waits until every service reports healthy. Verify it with:
+
+| Check | How |
+|---|---|
+| Application and API through Nginx | `http://localhost:8080` and `http://localhost:8080/api/v1/config` (the version shows the checked-out commit) |
+| API and worker readiness | Container health checks (`api healthcheck`, `worker healthcheck` probe `/readyz` on the internal admin listeners `:8091`/`:8092`, which are never routed publicly) |
+| Dependencies from inside the network | `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app run --rm --no-deps migrate doctor` |
+
+`pnpm dev` removes the application containers again, so the two modes never run two workers on one queue.
+
+## CI jobs (GitHub Actions, `.github/workflows/ci.yml`)
+
+| Job | Gates |
+|---|---|
+| Web, design system and contracts | Prettier, ESLint + Redocly, TypeScript, Vitest, contract freshness + schema tests, brand-asset hashes, web production build, Storybook build |
+| Go services | gofmt, `go vet` (both tag sets), unit and contract tests with `-race`, integration tests against PostgreSQL/Valkey/Mailpit service containers (MinIO tests skip: no published image), binary build, govulncheck |
+| Visual regression and accessibility | `pnpm visual:test`; the report is uploaded when it fails |
+| Secrets, dependencies and licences | gitleaks over the full history, `pnpm audit --audit-level high`, licence policy, dependency review on pull requests |
+| Container images build | `go.Dockerfile` (`api`, `worker`, `mcctl`) and `web.Dockerfile` |
+
+Actions are pinned to commit SHAs. Dependency advisories that have no patched release are handled with the smallest compatible change and documented where they are applied (for example the `fast-glob` → `tinyglobby` override in `pnpm-workspace.yaml`).
 
 ## Test matrix
 
@@ -137,16 +174,18 @@ PRs run a smoke subset; the full suite runs nightly and before every release.
 * Chaos in staging: kill an API node under load, restart Redis, restart PostgreSQL, restart LiveKit, stop ClamAV — verify degraded behaviour and recovery.
 * Monthly automated backup restore drill with integrity checks.
 
-## CI pipeline
+## CI pipeline (target)
+
+The implemented jobs are listed under “CI jobs” above. The target pipeline adds stages as the product grows:
 
 ```mermaid
 flowchart LR
   lint["Lint and static<br/>Go · TS · SQL · OpenAPI · secrets · licences"] --> unit["Unit<br/>Go -race · Vitest"]
-  unit --> integ["Integration<br/>testcontainers"]
+  unit --> integ["Integration<br/>PostgreSQL · Valkey · Mailpit"]
   integ --> contract["Contract<br/>OpenAPI · events · codegen drift"]
   contract --> build["Build images<br/>Trivy · SBOM"]
   build --> e2e["E2E smoke + axe<br/>Compose stack"]
   e2e --> dast["ZAP baseline"]
 ```
 
-Nightly adds: full E2E, full visual regression, k6 load smoke, ZAP full scan, ClamAV/EICAR flows, migration upgrade tests. CI provider assumed to be GitHub Actions (to confirm with the repository location).
+Nightly adds: full E2E, k6 load smoke, ZAP full scan, ClamAV/EICAR flows, migration upgrade tests.
