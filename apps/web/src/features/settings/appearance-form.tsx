@@ -1,8 +1,10 @@
 'use client';
 
 import { RadioCard, RadioCardGroup, toast } from '@matecollab/ui';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
+import { api, errorMessage, unwrap } from '@/lib/api';
 import { applyTheme, parseTheme, themeOptions, type ThemePreference } from '@/lib/preferences';
 
 const icons = { light: <Sun aria-hidden />, dark: <Moon aria-hidden />, system: <Monitor aria-hidden /> };
@@ -39,6 +41,13 @@ function ThemePreview({ theme }: { theme: ThemePreference }) {
 
 export function AppearanceForm({ initialTheme }: { initialTheme: ThemePreference }) {
   const [theme, setTheme] = useState(initialTheme);
+  const client = useQueryClient();
+  // The cookie gives this device the right first paint; the account copy follows the user.
+  const save = useMutation({
+    mutationFn: (next: ThemePreference) => unwrap(api.PATCH('/me/preferences', { body: { theme: next } })),
+    onSuccess: (prefs) => client.setQueryData(['me', 'preferences'], prefs),
+    onError: (err) => toast.error(`Your theme wasn’t saved to your account. ${errorMessage(err)}`),
+  });
   return (
     <section aria-labelledby="theme-heading" className="max-w-177.5">
       <h2 id="theme-heading" className="text-16 font-heading">
@@ -52,6 +61,7 @@ export function AppearanceForm({ initialTheme }: { initialTheme: ThemePreference
           const next = parseTheme(value);
           setTheme(next);
           applyTheme(next);
+          save.mutate(next);
           toast.success(`Theme set to ${themeOptions.find((o) => o.value === next)?.label ?? next}`);
         }}
         className="mt-6 grid-cols-3 max-phone:grid-cols-1"
@@ -71,7 +81,7 @@ export function AppearanceForm({ initialTheme }: { initialTheme: ThemePreference
         ))}
       </RadioCardGroup>
       <p className="mt-6 border-t border-border pt-5 text-12 text-fg-muted">
-        Applied immediately and remembered on this device. It moves to your account once sign-in is available.
+        Applied immediately and saved to your account, so it follows you to other devices.
       </p>
     </section>
   );
