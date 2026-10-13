@@ -220,7 +220,8 @@ function TwoStepPanel({ runStepUp }: { runStepUp: StepUp }) {
 
 function EnrolDialog({ onClose, onEnabled }: { onClose: () => void; onEnabled: (codes: string[]) => void }) {
   const setup = useQuery<TOTPSetup>({
-    queryKey: ['auth', 'mfa', 'setup'],
+    // Not under ['auth', 'mfa']: refreshing the status must not request a new secret.
+    queryKey: ['auth', 'totp-setup'],
     queryFn: () => unwrap(api.POST('/auth/mfa/totp/setup')),
     staleTime: Infinity,
     gcTime: 0,
