@@ -22,6 +22,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/db"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/health"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/idempotency"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/mailer"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
@@ -92,6 +93,7 @@ func run(ctx context.Context) error {
 	river.AddWorker(workers, &jobs.HeartbeatWorker{Metrics: metrics, Logger: logger})
 	river.AddWorker(workers, &emails.Worker{Sender: smtp, Keyring: keyring, Logger: logger})
 	river.AddWorker(workers, &users.PurgeWorker{Pool: pool, Logger: logger})
+	river.AddWorker(workers, &idempotency.CleanupWorker{Pool: pool})
 	storage, err := objectstore.NewS3(cfg.Storage)
 	if err != nil {
 		return err
@@ -100,7 +102,7 @@ func run(ctx context.Context) error {
 	river.AddWorker(workers, exportWorker)
 	river.AddWorker(workers, &audit.ExpireWorker{Pool: pool, Storage: storage})
 
-	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic(), users.PurgePeriodic()})
+	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic(), users.PurgePeriodic(), idempotency.CleanupPeriodic()})
 	if err != nil {
 		return fmt.Errorf("river: %w", err)
 	}

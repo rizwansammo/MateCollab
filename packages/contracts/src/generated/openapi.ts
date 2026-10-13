@@ -2420,7 +2420,16 @@ export interface operations {
     createInvitation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /**
+                 * @description Makes retries safe (for example a UUID per user action), kept for 24 hours per user. A
+                 *     retry with the same key and request replays the original response with
+                 *     `Idempotent-Replayed: true`; the same key with a different request answers
+                 *     `422 idempotency_key_reused`; a retry while the first is still running answers
+                 *     `409 idempotency_conflict`.
+                 */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
                 orgId: components["parameters"]["OrgId"];

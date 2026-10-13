@@ -190,6 +190,13 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
   );
 }
 
+/** A short, stable digest of the form values, so editing the form after an error uses a new key. */
+function digest(value: string): string {
+  let h = 5381;
+  for (let i = 0; i < value.length; i++) h = ((h << 5) + h + value.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 function InviteDialog({ onClose }: { onClose: () => void }) {
   const org = useOrg();
   const client = useQueryClient();
@@ -202,12 +209,17 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         : ['member'];
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<InvitableRole>('member');
+  // One key per dialog: a double submit or a retry after a network error cannot invite twice.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [fieldError, setFieldError] = useState<string | null>(null);
   const invite = useMutation({
     mutationFn: () =>
       unwrap(
         api.POST('/orgs/{orgId}/invitations', {
-          params: { path: { orgId: org.id } },
+          params: {
+            path: { orgId: org.id },
+            header: { 'Idempotency-Key': `${idempotencyKey}-${digest(`${email.trim()}|${role}`)}` },
+          },
           body: { email: email.trim(), role },
         }),
       ),

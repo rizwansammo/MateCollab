@@ -4,6 +4,8 @@ package apiserver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -296,4 +298,57 @@ func TestOrganisationGeneralAndRoles(t *testing.T) {
 			t.Fatal("effective permissions ignore the organisation's settings")
 		}
 	})
+}
+
+func TestInvitationIdempotency(t *testing.T) {
+	h := newHarness(t, nil)
+	ctx := context.Background()
+	orgA, owner := h.seedOrg("Acme", "acme", "owner@acme.test")
+	_, tok := h.invite(owner.b, orgA, "admin@acme.test", "admin")
+	admin := h.join(tok, "admin@acme.test", "Ada Admin")
+	path := "/orgs/" + orgA + "/invitations"
+	key := func(k string) reqOpt { return header("Idempotency-Key", k) }
+	count := func(email string) int {
+		var n int
+		if err := h.db.Owner.QueryRow(ctx, `SELECT count(*) FROM invitations WHERE org_id = $1 AND email = $2`, orgA, email).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	first := owner.b.do(http.MethodPost, path, map[string]string{"email": "new@acme.test", "role": "member"}, key("k-1")).expect(http.StatusCreated)
+	retry := owner.b.do(http.MethodPost, path, map[string]string{"email": "new@acme.test", "role": "member"}, key("k-1")).expect(http.StatusCreated)
+	if first.m()["id"] != retry.m()["id"] || retry.header.Get("Idempotent-Replayed") != "true" {
+		t.Fatalf("retry was not a replay: %s / %s", first.body, retry.body)
+	}
+	if count("new@acme.test") != 1 || len(h.emails("new@acme.test")) != 1 {
+		t.Fatal("a retry created a second invitation or email")
+	}
+	// The same key with a different request fails safely.
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "other@acme.test", "role": "member"}, key("k-1")).expect(http.StatusUnprocessableEntity, "idempotency_key_reused")
+	if count("other@acme.test") != 0 {
+		t.Fatal("conflicting request was executed")
+	}
+	// Keys are scoped per user.
+	admin.b.do(http.MethodPost, path, map[string]string{"email": "admins@acme.test", "role": "member"}, key("k-1")).expect(http.StatusCreated)
+	// Pending-invitation protection still applies without a key, and errors replay too.
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "new@acme.test", "role": "member"}).expect(http.StatusConflict, "invitation_pending")
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "new@acme.test", "role": "member"}, key("k-2")).expect(http.StatusConflict, "invitation_pending")
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "new@acme.test", "role": "member"}, key("k-2")).expect(http.StatusConflict, "invitation_pending")
+	// A request still in progress is not run twice.
+	ownerID := userID(owner)
+	busy := map[string]string{"email": "busy@acme.test", "role": "member"}
+	raw, _ := json.Marshal(busy)
+	sum := sha256.Sum256(append([]byte("POST\n/api/v1"+path+"\n"), raw...))
+	if _, err := h.db.Owner.Exec(ctx, `INSERT INTO idempotency_keys (user_id, key, method, path, request_hash, state, expires_at)
+		VALUES ($1, 'k-busy', 'POST', $2, $3, 'in_progress', now() + interval '1 hour')`, ownerID, "/api/v1"+path, sum[:]); err != nil {
+		t.Fatal(err)
+	}
+	owner.b.do(http.MethodPost, path, busy, key("k-busy")).expect(http.StatusConflict, "idempotency_conflict")
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "x@acme.test", "role": "member"}, key("not valid")).expect(http.StatusUnprocessableEntity)
+	// After 24 hours the key can be used again.
+	h.clock.Advance(25 * time.Hour)
+	owner.b.login(owner.email, owner.password) // the session expired on the test clock
+	owner.b.do(http.MethodPost, path, map[string]string{"email": "later@acme.test", "role": "member"}, key("k-1")).expect(http.StatusCreated)
+	h.clock.Advance(-25 * time.Hour)
 }

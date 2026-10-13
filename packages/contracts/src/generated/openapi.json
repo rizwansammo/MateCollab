@@ -1710,6 +1710,19 @@
             "csrf": []
           }
         ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Makes retries safe (for example a UUID per user action), kept for 24 hours per user. A\nretry with the same key and request replays the original response with\n`Idempotent-Replayed: true`; the same key with a different request answers\n`422 idempotency_key_reused`; a retry while the first is still running answers\n`409 idempotency_conflict`.\n",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

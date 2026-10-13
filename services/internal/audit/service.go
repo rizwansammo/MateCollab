@@ -255,7 +255,9 @@ type ExportArgs struct {
 func (ExportArgs) Kind() string { return "audit.export" }
 
 // InsertOpts routes exports to the maintenance queue.
-func (ExportArgs) InsertOpts() river.InsertOpts { return river.InsertOpts{Queue: "maintenance", MaxAttempts: 3} }
+func (ExportArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: "maintenance", MaxAttempts: 3}
+}
 
 // TenantOrgID scopes the job to its organisation.
 func (a ExportArgs) TenantOrgID() uuid.UUID { return a.OrgID }

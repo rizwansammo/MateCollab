@@ -17,10 +17,16 @@ import (
 )
 
 // Handler serves membership, directory and invitation routes.
-type Handler struct{ svc *Service }
+type Handler struct {
+	svc        *Service
+	idempotent func(http.Handler) http.Handler
+}
 
-// NewHandler returns the memberships HTTP handler.
-func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
+// NewHandler returns the memberships HTTP handler. idempotent wraps invitation creation with
+// Idempotency-Key handling (API-DESIGN.md §7).
+func NewHandler(svc *Service, idempotent func(http.Handler) http.Handler) *Handler {
+	return &Handler{svc: svc, idempotent: idempotent}
+}
 
 // PublicRoutes registers the invitee routes (mounted at /api/v1; a session is optional).
 func (h *Handler) PublicRoutes(r chi.Router) {
@@ -40,7 +46,7 @@ func (h *Handler) OrgRoutes(r chi.Router) {
 	r.Get("/members/{userId}", h.getMember)
 	r.Patch("/members/{userId}", h.updateMember)
 	r.Get("/invitations", h.listInvitations)
-	r.Post("/invitations", h.createInvitation)
+	r.With(h.idempotent).Post("/invitations", h.createInvitation)
 	r.Delete("/invitations/{invitationId}", h.revokeInvitation)
 	r.Post("/invitations/{invitationId}/resend", h.resendInvitation)
 	r.Post("/ownership-transfer", h.transferOwnership)

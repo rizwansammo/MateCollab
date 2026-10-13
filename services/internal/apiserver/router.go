@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
@@ -16,6 +17,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/orgs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/idempotency"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/tenant"
 	"github.com/rizwansammo/MateCollab/services/internal/users"
@@ -51,7 +53,11 @@ func Router(cfg *config.Config, logger *slog.Logger, m *telemetry.Metrics, svc *
 func mountModules(r chi.Router, cfg *config.Config, svc *Services) {
 	authH := auth.NewHandler(svc.Auth, svc.SessionView)
 	usersH := users.NewHandler(svc.Users)
-	membersH := memberships.NewHandler(svc.Memberships)
+	idem := &idempotency.Store{Pool: svc.Pool, Now: svc.Auth.Now, User: func(r *http.Request) (uuid.UUID, bool) {
+		p, ok := auth.PrincipalFrom(r.Context())
+		return uuid.UUID(p.UserID), ok
+	}}
+	membersH := memberships.NewHandler(svc.Memberships, idem.Middleware)
 	orgsH := orgs.NewHandler(svc.Orgs)
 	auditH := audit.NewHandler(svc.Audit, func(r *http.Request) string {
 		a, _ := tenant.ActorFrom(r.Context())
