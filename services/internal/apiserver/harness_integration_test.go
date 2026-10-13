@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
@@ -92,6 +93,7 @@ type harness struct {
 	secrets []string // values that must never appear in logs
 	storage objectstore.Store
 	queue   *jobs.Client
+	routes  chi.Routes
 }
 
 func newHarness(t *testing.T, env map[string]string) *harness {
@@ -154,9 +156,11 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewTLSServer(Router(cfg, logger, telemetry.NewMetrics("test"), svc))
+	router := Router(cfg, logger, telemetry.NewMetrics("test"), svc)
+	srv := httptest.NewTLSServer(router)
 	t.Cleanup(srv.Close)
-	h := &harness{t: t, db: database, rdb: rdb, svc: svc, srv: srv, keyring: keyring, clock: clk, logs: logs, storage: storage, queue: queue}
+	h := &harness{t: t, db: database, rdb: rdb, svc: svc, srv: srv, keyring: keyring, clock: clk, logs: logs, storage: storage, queue: queue,
+		routes: router.(chi.Routes)}
 	t.Cleanup(h.assertNoSecretsLogged)
 	return h
 }
