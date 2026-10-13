@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	_ "time/tzdata" // time zone validation must not depend on the container's zoneinfo
 
 	"github.com/rizwansammo/MateCollab/services/internal/apiserver"
@@ -40,6 +41,9 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	// Timestamps leave the process in UTC (API-DESIGN.md §4) whatever the host's zone; the
+	// database driver returns times in time.Local.
+	time.Local = time.UTC
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
 		return err

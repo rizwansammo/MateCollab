@@ -48,6 +48,9 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	// Timestamps leave the process in UTC (API-DESIGN.md §4) whatever the host's zone; the
+	// database driver returns times in time.Local.
+	time.Local = time.UTC
 	cfg, err := config.Load(workerEnv)
 	if err != nil {
 		return err
