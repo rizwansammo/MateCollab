@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required: [data]
+properties:
+  data:
+    type: array
+    description: The 20 most recent exports.
+    items:
+      $ref: ./AuditExport.yaml

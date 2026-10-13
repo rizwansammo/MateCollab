@@ -1,0 +1,23 @@
+type: object
+description: Filters applied to an export (the same filters as the list endpoint).
+additionalProperties: false
+properties:
+  actor_user_id:
+    type: string
+    format: uuid
+  action:
+    type: string
+    maxLength: 64
+    description: An action (`member.role_changed`) or a group prefix (`member`).
+  target_type:
+    type: string
+    maxLength: 40
+  target_id:
+    type: string
+    maxLength: 64
+  from:
+    type: string
+    format: date-time
+  to:
+    type: string
+    format: date-time

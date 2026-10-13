@@ -40,6 +40,10 @@
     {
       "name": "invitations",
       "description": "Invitations by email, from creation to acceptance."
+    },
+    {
+      "name": "audit",
+      "description": "The organisation audit log and its CSV exports."
     }
   ],
   "paths": {
@@ -1957,6 +1961,284 @@
           }
         }
       }
+    },
+    "/orgs/{orgId}/audit-logs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "listAuditLogs",
+        "summary": "List the organisation audit log",
+        "description": "Requires `audit.view` (Owner, Admin). Newest first.",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "actor",
+            "in": "query",
+            "description": "Member (user) ID of the actor.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "description": "An action or a group prefix (`member` matches `member.*`).",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "target_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive lower bound (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Exclusive upper bound (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/audit-logs/exports": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "listAuditExports",
+        "summary": "List recent audit log exports",
+        "description": "Requires `audit.export` (Owner, Admin).",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent exports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExportList"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAuditExport",
+        "summary": "Export the audit log to CSV",
+        "description": "Requires `audit.export`. Queues an `audit.export` job; poll the export until it is\n`completed`, then download it. Limited to 10 per hour per organisation. Answers\n`503 exports_unavailable` when object storage is not configured.\n",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditFilter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Queued.",
+            "headers": {
+              "Location": {
+                "description": "URL of the export.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExport"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/audit-logs/exports/{exportId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        },
+        {
+          "name": "exportId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getAuditExport",
+        "summary": "Get an audit log export",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The export.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExport"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/audit-logs/exports/{exportId}/download": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        },
+        {
+          "name": "exportId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Id"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "downloadAuditExport",
+        "summary": "Download an audit log export",
+        "description": "Redirects to a presigned download URL valid for 60 seconds (always an attachment). Exports\nthat are not finished or have expired answer `409 export_not_ready`. Each download is audited.\n",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the file.",
+            "headers": {
+              "Location": {
+                "description": "Presigned URL of the CSV file.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3417,6 +3699,233 @@
               "allow_guest_invites": {
                 "type": "boolean"
               }
+            }
+          }
+        }
+      },
+      "AuditLogEntry": {
+        "type": "object",
+        "description": "One organisation audit event. Metadata never contains secrets, tokens or passwords.",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "actor",
+          "action",
+          "target_type",
+          "target_id",
+          "outcome",
+          "ip",
+          "user_agent",
+          "request_id",
+          "metadata",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "actor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "user_id",
+              "display_name"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "user",
+                  "system",
+                  "integration"
+                ]
+              },
+              "user_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "display_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "action": {
+            "type": "string",
+            "examples": [
+              "member.role_changed"
+            ]
+          },
+          "target_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure",
+              "denied"
+            ]
+          },
+          "ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_agent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Changed fields and identifiers (for example `{\"from\":\"member\",\"to\":\"admin\"}`)."
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "AuditLogList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "page"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntry"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        }
+      },
+      "AuditFilter": {
+        "type": "object",
+        "description": "Filters applied to an export (the same filters as the list endpoint).",
+        "additionalProperties": false,
+        "properties": {
+          "actor_user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "An action (`member.role_changed`) or a group prefix (`member`)."
+          },
+          "target_type": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "target_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuditExport": {
+        "type": "object",
+        "description": "An asynchronous CSV export of the audit log. Files can be downloaded for 7 days.",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "filter",
+          "row_count",
+          "error",
+          "created_at",
+          "completed_at",
+          "expires_at"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "expired"
+            ]
+          },
+          "filter": {
+            "$ref": "#/components/schemas/AuditFilter"
+          },
+          "row_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "completed_at": {
+            "$ref": "#/components/schemas/NullableTimestamp"
+          },
+          "expires_at": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        }
+      },
+      "AuditExportList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "The 20 most recent exports.",
+            "items": {
+              "$ref": "#/components/schemas/AuditExport"
             }
           }
         }

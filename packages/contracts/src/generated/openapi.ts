@@ -549,6 +549,104 @@ export interface paths {
         patch: operations["updateOrganisation"];
         trace?: never;
     };
+    "/orgs/{orgId}/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List the organisation audit log
+         * @description Requires `audit.view` (Owner, Admin). Newest first.
+         */
+        get: operations["listAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/audit-logs/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List recent audit log exports
+         * @description Requires `audit.export` (Owner, Admin).
+         */
+        get: operations["listAuditExports"];
+        put?: never;
+        /**
+         * Export the audit log to CSV
+         * @description Requires `audit.export`. Queues an `audit.export` job; poll the export until it is
+         *     `completed`, then download it. Limited to 10 per hour per organisation. Answers
+         *     `503 exports_unavailable` when object storage is not configured.
+         */
+        post: operations["createAuditExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/audit-logs/exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Get an audit log export */
+        get: operations["getAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/audit-logs/exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Download an audit log export
+         * @description Redirects to a presigned download URL valid for 60 seconds (always an attachment). Exports
+         *     that are not finished or have expired answer `409 export_not_ready`. Each download is audited.
+         */
+        get: operations["downloadAuditExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orgs/{orgId}/invitations": {
         parameters: {
             query?: never;
@@ -783,6 +881,62 @@ export interface components {
         AccountDeletion: {
             /** @description When the account will be anonymised unless the request is cancelled first. */
             scheduled_at: components["schemas"]["Timestamp"];
+        };
+        /** @description An asynchronous CSV export of the audit log. Files can be downloaded for 7 days. */
+        AuditExport: {
+            completed_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            error: string | null;
+            expires_at: components["schemas"]["Timestamp"];
+            filter: components["schemas"]["AuditFilter"];
+            id: components["schemas"]["Id"];
+            row_count: number | null;
+            /** @enum {string} */
+            status: "pending" | "running" | "completed" | "failed" | "expired";
+        };
+        AuditExportList: {
+            /** @description The 20 most recent exports. */
+            data: components["schemas"]["AuditExport"][];
+        };
+        /** @description Filters applied to an export (the same filters as the list endpoint). */
+        AuditFilter: {
+            /** @description An action (`member.role_changed`) or a group prefix (`member`). */
+            action?: string;
+            /** Format: uuid */
+            actor_user_id?: string;
+            /** Format: date-time */
+            from?: string;
+            target_id?: string;
+            target_type?: string;
+            /** Format: date-time */
+            to?: string;
+        };
+        /** @description One organisation audit event. Metadata never contains secrets, tokens or passwords. */
+        AuditLogEntry: {
+            /** @example member.role_changed */
+            action: string;
+            actor: {
+                display_name: string | null;
+                /** @enum {string} */
+                type: "user" | "system" | "integration";
+                /** Format: uuid */
+                user_id: string | null;
+            };
+            created_at: components["schemas"]["Timestamp"];
+            id: components["schemas"]["Id"];
+            ip: string | null;
+            /** @description Changed fields and identifiers (for example `{"from":"member","to":"admin"}`). */
+            metadata: Record<string, never>;
+            /** @enum {string} */
+            outcome: "success" | "failure" | "denied";
+            request_id: string | null;
+            target_id: string | null;
+            target_type: string | null;
+            user_agent: string | null;
+        };
+        AuditLogList: {
+            data: components["schemas"]["AuditLogEntry"][];
+            page: components["schemas"]["PageInfo"];
         };
         ChangePasswordRequest: {
             new_password: string;
@@ -2081,6 +2235,154 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Organisation"];
                 };
+            };
+        };
+    };
+    listAuditLogs: {
+        parameters: {
+            query?: {
+                /** @description An action or a group prefix (`member` matches `member.*`). */
+                action?: string;
+                /** @description Member (user) ID of the actor. */
+                actor?: string;
+                /** @description Opaque cursor from `page.next_cursor`; only valid with the same filters. */
+                cursor?: components["parameters"]["Cursor"];
+                /** @description Inclusive lower bound (RFC 3339). */
+                from?: string;
+                /** @description Page size (default 50). */
+                limit?: components["parameters"]["Limit"];
+                target_id?: string;
+                target_type?: string;
+                /** @description Exclusive upper bound (RFC 3339). */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description One page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogList"];
+                };
+            };
+        };
+    };
+    listAuditExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Recent exports. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditExportList"];
+                };
+            };
+        };
+    };
+    createAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditFilter"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Queued. */
+            202: {
+                headers: {
+                    /** @description URL of the export. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditExport"];
+                };
+            };
+        };
+    };
+    getAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description The export. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditExport"];
+                };
+            };
+        };
+    };
+    downloadAuditExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Redirect to the file. */
+            302: {
+                headers: {
+                    /** @description Presigned URL of the CSV file. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

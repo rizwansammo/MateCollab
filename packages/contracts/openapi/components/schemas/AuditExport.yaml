@@ -1,0 +1,22 @@
+type: object
+description: An asynchronous CSV export of the audit log. Files can be downloaded for 7 days.
+additionalProperties: false
+required: [id, status, filter, row_count, error, created_at, completed_at, expires_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  status:
+    type: string
+    enum: [pending, running, completed, failed, expired]
+  filter:
+    $ref: ./AuditFilter.yaml
+  row_count:
+    type: [integer, 'null']
+  error:
+    type: [string, 'null']
+  created_at:
+    $ref: ./Timestamp.yaml
+  completed_at:
+    $ref: ./NullableTimestamp.yaml
+  expires_at:
+    $ref: ./Timestamp.yaml

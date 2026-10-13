@@ -1,0 +1,28 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+  - name: exportId
+    in: path
+    required: true
+    schema:
+      $ref: ../components/schemas/Id.yaml
+get:
+  operationId: downloadAuditExport
+  summary: Download an audit log export
+  description: |
+    Redirects to a presigned download URL valid for 60 seconds (always an attachment). Exports
+    that are not finished or have expired answer `409 export_not_ready`. Each download is audited.
+  tags: [audit]
+  security:
+    - session: []
+  responses:
+    '302':
+      description: Redirect to the file.
+      headers:
+        Location:
+          description: Presigned URL of the CSV file.
+          schema:
+            type: string
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

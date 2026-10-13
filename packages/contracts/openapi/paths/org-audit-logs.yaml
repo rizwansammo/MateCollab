@@ -1,0 +1,57 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: listAuditLogs
+  summary: List the organisation audit log
+  description: Requires `audit.view` (Owner, Admin). Newest first.
+  tags: [audit]
+  security:
+    - session: []
+  parameters:
+    - name: actor
+      in: query
+      description: Member (user) ID of the actor.
+      schema:
+        type: string
+        format: uuid
+    - name: action
+      in: query
+      description: An action or a group prefix (`member` matches `member.*`).
+      schema:
+        type: string
+        maxLength: 64
+    - name: target_type
+      in: query
+      schema:
+        type: string
+        maxLength: 40
+    - name: target_id
+      in: query
+      schema:
+        type: string
+        maxLength: 64
+    - name: from
+      in: query
+      description: Inclusive lower bound (RFC 3339).
+      schema:
+        type: string
+        format: date-time
+    - name: to
+      in: query
+      description: Exclusive upper bound (RFC 3339).
+      schema:
+        type: string
+        format: date-time
+    - $ref: ../components/parameters/Cursor.yaml
+    - $ref: ../components/parameters/Limit.yaml
+  responses:
+    '200':
+      description: One page.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AuditLogList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required: [data, page]
+properties:
+  data:
+    type: array
+    items:
+      $ref: ./AuditLogEntry.yaml
+  page:
+    $ref: ./PageInfo.yaml

@@ -14,6 +14,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/rizwansammo/MateCollab/services/internal/app"
+	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/emails"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/adminserver"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
@@ -23,6 +24,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/mailer"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 	"github.com/rizwansammo/MateCollab/services/internal/users"
@@ -49,7 +51,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.Require(config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto); err != nil {
+	if err := cfg.Require(config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto, config.PartStorage); err != nil {
 		return err
 	}
 	version := app.BuildVersion()
@@ -90,11 +92,19 @@ func run(ctx context.Context) error {
 	river.AddWorker(workers, &jobs.HeartbeatWorker{Metrics: metrics, Logger: logger})
 	river.AddWorker(workers, &emails.Worker{Sender: smtp, Keyring: keyring, Logger: logger})
 	river.AddWorker(workers, &users.PurgeWorker{Pool: pool, Logger: logger})
+	storage, err := objectstore.NewS3(cfg.Storage)
+	if err != nil {
+		return err
+	}
+	exportWorker := &audit.ExportWorker{Pool: pool, Storage: storage, Logger: logger}
+	river.AddWorker(workers, exportWorker)
+	river.AddWorker(workers, &audit.ExpireWorker{Pool: pool, Storage: storage})
 
 	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic(), users.PurgePeriodic()})
 	if err != nil {
 		return fmt.Errorf("river: %w", err)
 	}
+	exportWorker.Jobs = client // schedules the expiry of finished exports
 	if err := client.Start(ctx); err != nil {
 		return fmt.Errorf("river start: %w", err)
 	}

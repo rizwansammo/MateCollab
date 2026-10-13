@@ -1,0 +1,41 @@
+type: object
+description: One organisation audit event. Metadata never contains secrets, tokens or passwords.
+additionalProperties: false
+required: [id, actor, action, target_type, target_id, outcome, ip, user_agent, request_id, metadata, created_at]
+properties:
+  id:
+    $ref: ./Id.yaml
+  actor:
+    type: object
+    additionalProperties: false
+    required: [type, user_id, display_name]
+    properties:
+      type:
+        type: string
+        enum: [user, system, integration]
+      user_id:
+        type: [string, 'null']
+        format: uuid
+      display_name:
+        type: [string, 'null']
+  action:
+    type: string
+    examples: [member.role_changed]
+  target_type:
+    type: [string, 'null']
+  target_id:
+    type: [string, 'null']
+  outcome:
+    type: string
+    enum: [success, failure, denied]
+  ip:
+    type: [string, 'null']
+  user_agent:
+    type: [string, 'null']
+  request_id:
+    type: [string, 'null']
+  metadata:
+    type: object
+    description: Changed fields and identifiers (for example `{"from":"member","to":"admin"}`).
+  created_at:
+    $ref: ./Timestamp.yaml

@@ -20,6 +20,7 @@ import {
   MessagesSquare,
   Palette,
   Reply,
+  ScrollText,
   Share2,
   ShieldCheck,
   UserRound,
@@ -161,6 +162,7 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
       { label: 'Invitations', href: '/admin/invitations', path: '/admin/invitations', icon: UserRoundPlus },
       { label: 'Roles and permissions', href: '/admin/roles', path: '/admin/roles', icon: KeyRound },
       { label: 'Security policy', href: '/admin/security', path: '/admin/security', icon: ShieldCheck },
+      { label: 'Audit log', href: '/admin/audit', path: '/admin/audit', icon: ScrollText },
     ],
   },
 };

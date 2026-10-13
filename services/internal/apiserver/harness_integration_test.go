@@ -20,6 +20,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -34,6 +35,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/crypto"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/mfa"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 	"github.com/rizwansammo/MateCollab/services/internal/testkit"
@@ -88,6 +90,8 @@ type harness struct {
 	logs    *syncBuffer
 	ipSeq   int
 	secrets []string // values that must never appear in logs
+	storage objectstore.Store
+	queue   *jobs.Client
 }
 
 func newHarness(t *testing.T, env map[string]string) *harness {
@@ -131,13 +135,28 @@ func newHarness(t *testing.T, env map[string]string) *harness {
 		t.Fatal(err)
 	}
 	clk := &clock{}
-	svc, err := NewServices(Deps{Config: cfg, Pool: database.App, Redis: rdb, Jobs: queue, Logger: logger, Now: clk.Now})
+	// Object storage (audit exports) is optional: MinIO runs locally but has no CI image.
+	var storage objectstore.Store
+	if endpoint := os.Getenv(testkit.EnvS3Endpoint); endpoint != "" {
+		s3, err := objectstore.NewS3(config.StorageConfig{
+			Endpoint: endpoint, PublicEndpoint: endpoint, Region: "us-east-1", ForcePathStyle: true,
+			Bucket: "mc-it-" + randomHex(t, 4), AccessKeyID: os.Getenv(testkit.EnvS3AccessKey), SecretAccessKey: os.Getenv(testkit.EnvS3SecretKey),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s3.Init(ctx, []string{testOrigin}); err != nil {
+			t.Fatal(err)
+		}
+		storage = s3
+	}
+	svc, err := NewServices(Deps{Config: cfg, Pool: database.App, Redis: rdb, Jobs: queue, Storage: storage, Logger: logger, Now: clk.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
 	srv := httptest.NewTLSServer(Router(cfg, logger, telemetry.NewMetrics("test"), svc))
 	t.Cleanup(srv.Close)
-	h := &harness{t: t, db: database, rdb: rdb, svc: svc, srv: srv, keyring: keyring, clock: clk, logs: logs}
+	h := &harness{t: t, db: database, rdb: rdb, svc: svc, srv: srv, keyring: keyring, clock: clk, logs: logs, storage: storage, queue: queue}
 	t.Cleanup(h.assertNoSecretsLogged)
 	return h
 }

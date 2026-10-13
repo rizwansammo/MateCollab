@@ -18,6 +18,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/health"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
 )
@@ -43,7 +44,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := cfg.Require(config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto); err != nil {
+	if err := cfg.Require(config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto, config.PartStorage); err != nil {
 		return err
 	}
 	version := app.BuildVersion()
@@ -76,7 +77,11 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("river: %w", err)
 	}
-	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Logger: logger})
+	storage, err := objectstore.NewS3(cfg.Storage)
+	if err != nil {
+		return err
+	}
+	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Storage: storage, Logger: logger})
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,166 @@ import (
 	"github.com/google/uuid"
 )
 
+const claimAuditExport = `-- name: ClaimAuditExport :one
+UPDATE audit_exports SET status = 'running'
+WHERE org_id = $1 AND id = $2 AND status IN ('pending', 'running')
+RETURNING filters, expires_at
+`
+
+type ClaimAuditExportParams struct {
+	OrgID    uuid.UUID
+	ExportID uuid.UUID
+}
+
+type ClaimAuditExportRow struct {
+	Filters   json.RawMessage
+	ExpiresAt time.Time
+}
+
+func (q *Queries) ClaimAuditExport(ctx context.Context, arg ClaimAuditExportParams) (ClaimAuditExportRow, error) {
+	row := q.db.QueryRow(ctx, claimAuditExport, arg.OrgID, arg.ExportID)
+	var i ClaimAuditExportRow
+	err := row.Scan(&i.Filters, &i.ExpiresAt)
+	return i, err
+}
+
+const completeAuditExport = `-- name: CompleteAuditExport :exec
+UPDATE audit_exports SET status = 'completed', object_key = $1, row_count = $2, completed_at = now()
+WHERE org_id = $3 AND id = $4
+`
+
+type CompleteAuditExportParams struct {
+	ObjectKey *string
+	RowCount  *int32
+	OrgID     uuid.UUID
+	ExportID  uuid.UUID
+}
+
+func (q *Queries) CompleteAuditExport(ctx context.Context, arg CompleteAuditExportParams) error {
+	_, err := q.db.Exec(ctx, completeAuditExport,
+		arg.ObjectKey,
+		arg.RowCount,
+		arg.OrgID,
+		arg.ExportID,
+	)
+	return err
+}
+
+const createAuditExport = `-- name: CreateAuditExport :one
+INSERT INTO audit_exports (org_id, requested_by, filters, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING id, status, filters, row_count, error, created_at, completed_at, expires_at
+`
+
+type CreateAuditExportParams struct {
+	OrgID       uuid.UUID
+	RequestedBy uuid.UUID
+	Filters     json.RawMessage
+	ExpiresAt   time.Time
+}
+
+type CreateAuditExportRow struct {
+	ID          uuid.UUID
+	Status      string
+	Filters     json.RawMessage
+	RowCount    *int32
+	Error       *string
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+	ExpiresAt   time.Time
+}
+
+func (q *Queries) CreateAuditExport(ctx context.Context, arg CreateAuditExportParams) (CreateAuditExportRow, error) {
+	row := q.db.QueryRow(ctx, createAuditExport,
+		arg.OrgID,
+		arg.RequestedBy,
+		arg.Filters,
+		arg.ExpiresAt,
+	)
+	var i CreateAuditExportRow
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.Filters,
+		&i.RowCount,
+		&i.Error,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const expireAuditExport = `-- name: ExpireAuditExport :exec
+UPDATE audit_exports SET status = 'expired', object_key = NULL
+WHERE org_id = $1 AND id = $2
+`
+
+type ExpireAuditExportParams struct {
+	OrgID    uuid.UUID
+	ExportID uuid.UUID
+}
+
+func (q *Queries) ExpireAuditExport(ctx context.Context, arg ExpireAuditExportParams) error {
+	_, err := q.db.Exec(ctx, expireAuditExport, arg.OrgID, arg.ExportID)
+	return err
+}
+
+const failAuditExport = `-- name: FailAuditExport :exec
+UPDATE audit_exports SET status = 'failed', error = $1, completed_at = now()
+WHERE org_id = $2 AND id = $3
+`
+
+type FailAuditExportParams struct {
+	Error    *string
+	OrgID    uuid.UUID
+	ExportID uuid.UUID
+}
+
+func (q *Queries) FailAuditExport(ctx context.Context, arg FailAuditExportParams) error {
+	_, err := q.db.Exec(ctx, failAuditExport, arg.Error, arg.OrgID, arg.ExportID)
+	return err
+}
+
+const getAuditExport = `-- name: GetAuditExport :one
+SELECT id, status, filters, object_key, row_count, error, created_at, completed_at, expires_at
+FROM audit_exports WHERE org_id = $1 AND id = $2
+`
+
+type GetAuditExportParams struct {
+	OrgID    uuid.UUID
+	ExportID uuid.UUID
+}
+
+type GetAuditExportRow struct {
+	ID          uuid.UUID
+	Status      string
+	Filters     json.RawMessage
+	ObjectKey   *string
+	RowCount    *int32
+	Error       *string
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+	ExpiresAt   time.Time
+}
+
+func (q *Queries) GetAuditExport(ctx context.Context, arg GetAuditExportParams) (GetAuditExportRow, error) {
+	row := q.db.QueryRow(ctx, getAuditExport, arg.OrgID, arg.ExportID)
+	var i GetAuditExportRow
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.Filters,
+		&i.ObjectKey,
+		&i.RowCount,
+		&i.Error,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const insertAuditLog = `-- name: InsertAuditLog :exec
 
 INSERT INTO audit_logs (org_id, actor_type, actor_user_id, action, target_type, target_id, outcome,
@@ -56,33 +216,115 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 	return err
 }
 
+const listAuditExports = `-- name: ListAuditExports :many
+SELECT id, status, filters, row_count, error, created_at, completed_at, expires_at
+FROM audit_exports WHERE org_id = $1
+ORDER BY created_at DESC LIMIT 20
+`
+
+type ListAuditExportsRow struct {
+	ID          uuid.UUID
+	Status      string
+	Filters     json.RawMessage
+	RowCount    *int32
+	Error       *string
+	CreatedAt   time.Time
+	CompletedAt *time.Time
+	ExpiresAt   time.Time
+}
+
+func (q *Queries) ListAuditExports(ctx context.Context, orgID uuid.UUID) ([]ListAuditExportsRow, error) {
+	rows, err := q.db.Query(ctx, listAuditExports, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAuditExportsRow{}
+	for rows.Next() {
+		var i ListAuditExportsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.Filters,
+			&i.RowCount,
+			&i.Error,
+			&i.CreatedAt,
+			&i.CompletedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAuditLogs = `-- name: ListAuditLogs :many
-SELECT id, actor_type, actor_user_id, action, target_type, target_id, outcome, created_at, metadata
-FROM audit_logs
-WHERE org_id = $1
-ORDER BY created_at DESC, id DESC
-LIMIT $2
+SELECT a.id, a.actor_type, a.actor_user_id, u.display_name AS actor_name, a.action, a.target_type,
+       a.target_id, a.outcome, a.ip, a.user_agent, a.request_id, a.metadata, a.created_at
+FROM audit_logs a
+LEFT JOIN users u ON u.id = a.actor_user_id
+WHERE a.org_id = $1
+  AND ($2::uuid IS NULL OR a.actor_user_id = $2::uuid)
+  AND ($3::text IS NULL OR a.action = $3::text
+       OR starts_with(a.action, $3::text || '.'))
+  AND ($4::text IS NULL OR a.target_type = $4::text)
+  AND ($5::text IS NULL OR a.target_id = $5::text)
+  AND ($6::timestamptz IS NULL OR a.created_at >= $6::timestamptz)
+  AND ($7::timestamptz IS NULL OR a.created_at < $7::timestamptz)
+  AND ($8::timestamptz IS NULL
+       OR (a.created_at, a.id) < ($8::timestamptz, $9::uuid))
+ORDER BY a.created_at DESC, a.id DESC
+LIMIT $10
 `
 
 type ListAuditLogsParams struct {
-	OrgID    uuid.UUID
-	RowLimit int32
+	OrgID         uuid.UUID
+	ActorUserID   *uuid.UUID
+	Action        *string
+	TargetType    *string
+	TargetID      *string
+	CreatedFrom   *time.Time
+	CreatedTo     *time.Time
+	BeforeCreated *time.Time
+	BeforeID      *uuid.UUID
+	RowLimit      int32
 }
 
 type ListAuditLogsRow struct {
 	ID          uuid.UUID
 	ActorType   string
 	ActorUserID *uuid.UUID
+	ActorName   *string
 	Action      string
 	TargetType  *string
 	TargetID    *string
 	Outcome     string
-	CreatedAt   time.Time
+	Ip          *netip.Addr
+	UserAgent   *string
+	RequestID   *string
 	Metadata    json.RawMessage
+	CreatedAt   time.Time
 }
 
+// Newest first, keyset-paginated on (created_at, id). `action` matches an exact action or a
+// prefix group ("member" matches "member.role_changed").
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {
-	rows, err := q.db.Query(ctx, listAuditLogs, arg.OrgID, arg.RowLimit)
+	rows, err := q.db.Query(ctx, listAuditLogs,
+		arg.OrgID,
+		arg.ActorUserID,
+		arg.Action,
+		arg.TargetType,
+		arg.TargetID,
+		arg.CreatedFrom,
+		arg.CreatedTo,
+		arg.BeforeCreated,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +336,16 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 			&i.ID,
 			&i.ActorType,
 			&i.ActorUserID,
+			&i.ActorName,
 			&i.Action,
 			&i.TargetType,
 			&i.TargetID,
 			&i.Outcome,
-			&i.CreatedAt,
+			&i.Ip,
+			&i.UserAgent,
+			&i.RequestID,
 			&i.Metadata,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

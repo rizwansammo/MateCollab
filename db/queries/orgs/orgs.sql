@@ -8,9 +8,13 @@ INSERT INTO organisations (id, slug, name) VALUES (@org_id, @slug, @name);
 SELECT id, slug, name, status, default_timezone, default_locale, created_at, updated_at
 FROM organisations WHERE id = @org_id;
 
--- name: UpdateOrganisationName :one
-UPDATE organisations SET name = @name, updated_at = now()
+-- name: UpdateOrganisationProfile :one
+-- Optimistic concurrency: with expected_updated_at (from the ETag) the update applies only to
+-- the version the client saw.
+UPDATE organisations
+SET name = @name, default_timezone = @default_timezone, default_locale = @default_locale, updated_at = now()
 WHERE id = @org_id
+  AND (sqlc.narg(expected_updated_at)::timestamptz IS NULL OR updated_at = sqlc.narg(expected_updated_at)::timestamptz)
 RETURNING id, slug, name, status, default_timezone, default_locale, created_at, updated_at;
 
 -- name: GetSettingsSection :one

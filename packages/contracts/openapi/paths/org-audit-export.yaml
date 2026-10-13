@@ -1,0 +1,24 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+  - name: exportId
+    in: path
+    required: true
+    schema:
+      $ref: ../components/schemas/Id.yaml
+get:
+  operationId: getAuditExport
+  summary: Get an audit log export
+  tags: [audit]
+  security:
+    - session: []
+  responses:
+    '200':
+      description: The export.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AuditExport.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

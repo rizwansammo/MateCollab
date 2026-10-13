@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
 	"github.com/rizwansammo/MateCollab/services/internal/emails"
 	"github.com/rizwansammo/MateCollab/services/internal/memberships"
@@ -18,6 +19,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/crypto"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/jobs"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/objectstore"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/password"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/ratelimit"
 	"github.com/rizwansammo/MateCollab/services/internal/users"
@@ -26,6 +28,7 @@ import (
 // Services are the feature modules of the API, wired together. mcctl builds the same graph for
 // operator commands such as `org create`.
 type Services struct {
+	Audit       *audit.Service
 	Auth        *auth.Service
 	Users       *users.Service
 	Memberships *memberships.Service
@@ -38,8 +41,10 @@ type Deps struct {
 	Pool   *pgxpool.Pool
 	Redis  *redis.Client
 	Jobs   jobs.Enqueuer
-	Logger *slog.Logger
-	Now    func() time.Time // injectable clock for tests
+	// Storage is the object store; nil disables features that need it (audit exports).
+	Storage objectstore.Store
+	Logger  *slog.Logger
+	Now     func() time.Time // injectable clock for tests
 }
 
 // NewServices builds the module graph. Configuration must already satisfy PartCrypto.
@@ -76,7 +81,9 @@ func NewServices(d Deps) (*Services, error) {
 		Pool: d.Pool, Redis: d.Redis, Auth: authSvc, Users: userSvc, Memberships: memberSvc, Limiter: limiter,
 		AllowSignup: cfg.Features.AllowOrgSignup, Logger: d.Logger, Now: d.Now,
 	})
-	return &Services{Auth: authSvc, Users: userSvc, Memberships: memberSvc, Orgs: orgSvc}, nil
+	auditSvc := audit.New(audit.Deps{Pool: d.Pool, Jobs: d.Jobs, Storage: d.Storage, Limiter: limiter,
+		CursorKey: subkeys.Cursor, Logger: d.Logger, Now: d.Now})
+	return &Services{Audit: auditSvc, Auth: authSvc, Users: userSvc, Memberships: memberSvc, Orgs: orgSvc}, nil
 }
 
 // sessionJSON is the GET /auth/session document: everything the web client needs at start-up.

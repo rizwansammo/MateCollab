@@ -1,0 +1,53 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: listAuditExports
+  summary: List recent audit log exports
+  description: Requires `audit.export` (Owner, Admin).
+  tags: [audit]
+  security:
+    - session: []
+  responses:
+    '200':
+      description: Recent exports.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AuditExportList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+post:
+  operationId: createAuditExport
+  summary: Export the audit log to CSV
+  description: |
+    Requires `audit.export`. Queues an `audit.export` job; poll the export until it is
+    `completed`, then download it. Limited to 10 per hour per organisation. Answers
+    `503 exports_unavailable` when object storage is not configured.
+  tags: [audit]
+  security:
+    - session: []
+      csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/AuditFilter.yaml
+  responses:
+    '202':
+      description: Queued.
+      headers:
+        Location:
+          description: URL of the export.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AuditExport.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

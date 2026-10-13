@@ -347,8 +347,8 @@ func keysGenerate(args []string, out io.Writer) error {
 
 func configCheck(cfg *config.Config, out io.Writer) error {
 	parts := map[string][]config.Part{
-		"api":                        {config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto},
-		"worker":                     {config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto},
+		"api":                        {config.PartHTTP, config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartCrypto, config.PartStorage},
+		"worker":                     {config.PartAdmin, config.PartDatabase, config.PartRedis, config.PartSMTP, config.PartCrypto, config.PartStorage},
 		"mcctl migrate/storage/mail": {config.PartMigrations, config.PartStorage, config.PartSMTP},
 		"platform services":          {config.PartLiveKit, config.PartCrypto},
 	}

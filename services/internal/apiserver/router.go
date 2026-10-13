@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
 	"github.com/rizwansammo/MateCollab/services/internal/clientconfig"
 	"github.com/rizwansammo/MateCollab/services/internal/memberships"
@@ -16,6 +17,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/config"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/tenant"
 	"github.com/rizwansammo/MateCollab/services/internal/users"
 )
 
@@ -51,6 +53,13 @@ func mountModules(r chi.Router, cfg *config.Config, svc *Services) {
 	usersH := users.NewHandler(svc.Users)
 	membersH := memberships.NewHandler(svc.Memberships)
 	orgsH := orgs.NewHandler(svc.Orgs)
+	auditH := audit.NewHandler(svc.Audit, func(r *http.Request) string {
+		a, _ := tenant.ActorFrom(r.Context())
+		if m, err := svc.Memberships.Resolve(r.Context(), a.UserID, a.OrgID); err == nil {
+			return m.Slug
+		}
+		return "organisation"
+	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(svc.Auth.Middleware, svc.Auth.CSRF(cfg.AllowedOrigins))
@@ -65,6 +74,7 @@ func mountModules(r chi.Router, cfg *config.Config, svc *Services) {
 				r.Use(orgcontext.Middleware(svc.Memberships, svc.Orgs, svc.Auth.Now))
 				orgsH.OrgRoutes(r)
 				membersH.OrgRoutes(r)
+				auditH.OrgRoutes(r)
 			})
 		})
 	})

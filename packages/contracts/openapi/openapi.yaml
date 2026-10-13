@@ -33,6 +33,8 @@ tags:
     description: The member directory, roles and membership status.
   - name: invitations
     description: Invitations by email, from creation to acceptance.
+  - name: audit
+    description: The organisation audit log and its CSV exports.
 paths:
   /config:
     $ref: ./paths/config.yaml
@@ -110,6 +112,14 @@ paths:
     $ref: ./paths/org-me-membership.yaml
   /orgs/{orgId}/roles:
     $ref: ./paths/org-roles.yaml
+  /orgs/{orgId}/audit-logs:
+    $ref: ./paths/org-audit-logs.yaml
+  /orgs/{orgId}/audit-logs/exports:
+    $ref: ./paths/org-audit-exports.yaml
+  /orgs/{orgId}/audit-logs/exports/{exportId}:
+    $ref: ./paths/org-audit-export.yaml
+  /orgs/{orgId}/audit-logs/exports/{exportId}/download:
+    $ref: ./paths/org-audit-export-download.yaml
 components:
   securitySchemes:
     session:
@@ -252,6 +262,16 @@ components:
       $ref: ./components/schemas/AccountDeletion.yaml
     RoleCatalogue:
       $ref: ./components/schemas/RoleCatalogue.yaml
+    AuditLogEntry:
+      $ref: ./components/schemas/AuditLogEntry.yaml
+    AuditLogList:
+      $ref: ./components/schemas/AuditLogList.yaml
+    AuditFilter:
+      $ref: ./components/schemas/AuditFilter.yaml
+    AuditExport:
+      $ref: ./components/schemas/AuditExport.yaml
+    AuditExportList:
+      $ref: ./components/schemas/AuditExportList.yaml
   responses:
     Problem:
       $ref: ./components/responses/Problem.yaml
