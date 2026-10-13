@@ -22,12 +22,14 @@ import { EMAIL } from '@/features/auth/form-helpers';
 import { sessionKey, useSession } from '@/features/auth/session';
 import { useStepUp } from '@/features/auth/step-up';
 import { ApiError, api, errorMessage, unwrap } from '@/lib/api';
+import { MembershipProfilePanel } from './membership-profile';
 
 export function ProfileSettings() {
   const stepUp = useStepUp();
   return (
     <>
       <NamePanel />
+      <MembershipProfilePanel />
       <EmailsPanel runStepUp={stepUp.run} />
       {stepUp.dialog}
     </>

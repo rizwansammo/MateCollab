@@ -1,6 +1,7 @@
 package memberships
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -43,6 +44,7 @@ func (h *Handler) OrgRoutes(r chi.Router) {
 	r.Delete("/invitations/{invitationId}", h.revokeInvitation)
 	r.Post("/invitations/{invitationId}/resend", h.resendInvitation)
 	r.Post("/ownership-transfer", h.transferOwnership)
+	r.Patch("/me/membership", h.updateOwnMembership)
 }
 
 // ---- JSON ---------------------------------------------------------------------------------------
@@ -375,4 +377,29 @@ func (h *Handler) transferOwnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// optional decodes a JSON Merge Patch member: present (possibly null) or absent.
+type optional struct{ Optional }
+
+func (o *optional) UnmarshalJSON(b []byte) error {
+	o.Set = true
+	return json.Unmarshal(b, &o.Value)
+}
+
+func (h *Handler) updateOwnMembership(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title        optional `json:"title"`
+		ContactEmail optional `json:"contact_email"`
+	}
+	if err := httpx.DecodeJSON(w, r, &req, 8<<10); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	m, err := h.svc.UpdateOwnMembership(r.Context(), actor(r), OwnProfile{Title: req.Title.Optional, ContactEmail: req.ContactEmail.Optional}, httpx.ClientMetaFrom(r))
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, memberToJSON(m))
 }

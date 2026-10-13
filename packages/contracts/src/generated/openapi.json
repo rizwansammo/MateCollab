@@ -1787,6 +1787,54 @@
           }
         }
       }
+    },
+    "/orgs/{orgId}/me/membership": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "patch": {
+        "operationId": "updateOwnMembership",
+        "summary": "Update my title and contact email in this organisation",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated membership.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3112,6 +3160,26 @@
           "user_id": {
             "$ref": "#/components/schemas/Id",
             "description": "An active Admin of the organisation."
+          }
+        }
+      },
+      "MembershipProfileUpdate": {
+        "type": "object",
+        "description": "JSON Merge Patch of the caller's own membership. Role, status and organisation cannot be\nchanged here (unknown fields are rejected).\n",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100,
+            "description": "Job title shown to co-members; null or empty clears it."
+          },
+          "contact_email": {
+            "type": "string",
+            "maxLength": 254,
+            "description": "Must be one of the caller's confirmed email addresses."
           }
         }
       }

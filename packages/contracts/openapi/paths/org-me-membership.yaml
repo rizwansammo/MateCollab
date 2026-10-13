@@ -1,0 +1,26 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+patch:
+  operationId: updateOwnMembership
+  summary: Update my title and contact email in this organisation
+  tags: [members]
+  security:
+    - session: []
+      csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/MembershipProfileUpdate.yaml
+  responses:
+    '200':
+      description: The updated membership.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Member.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

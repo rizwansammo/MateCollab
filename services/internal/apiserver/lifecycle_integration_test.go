@@ -5,6 +5,7 @@ package apiserver
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,4 +101,43 @@ func TestOwnershipTransfer(t *testing.T) {
 			t.Fatalf("promote member: %+v %v owners=%d", res, err, owners())
 		}
 	})
+}
+
+func TestOwnMembershipProfile(t *testing.T) {
+	h := newHarness(t, nil)
+	orgA, owner := h.seedOrg("Acme", "acme", "owner@acme.test")
+	orgB, _ := h.seedOrg("Globex", "globex", "owner@globex.test")
+	_, tok := h.invite(owner.b, orgA, "member@acme.test", "member")
+	member := h.join(tok, "member@acme.test", "Mo Member")
+	path := "/orgs/" + orgA + "/me/membership"
+
+	var m struct {
+		Role   string  `json:"role"`
+		Status string  `json:"status"`
+		Title  *string `json:"title"`
+		Email  *string `json:"email"`
+	}
+	member.b.do(http.MethodPatch, path, map[string]any{"title": "  Head of‮ Ops "}).expect(http.StatusOK).json(&m)
+	if m.Title == nil || *m.Title != "Head of Ops" || m.Email == nil || *m.Email != "member@acme.test" {
+		t.Fatalf("title: %+v", m)
+	}
+	// Role, status and organisation cannot be changed here.
+	member.b.do(http.MethodPatch, path, map[string]any{"role": "owner"}).expect(http.StatusBadRequest)
+	member.b.do(http.MethodPatch, path, map[string]any{"status": "active"}).expect(http.StatusBadRequest)
+	member.b.do(http.MethodPatch, path, map[string]any{"title": strings.Repeat("x", 101)}).expect(http.StatusUnprocessableEntity)
+
+	// Contact email: only the member's own confirmed addresses.
+	member.b.do(http.MethodPatch, path, map[string]any{"contact_email": "owner@acme.test"}).expect(http.StatusUnprocessableEntity, "validation_failed")
+	member.b.do(http.MethodPost, "/me/emails", map[string]string{"email": "mo@personal.test"}).expect(http.StatusCreated)
+	member.b.do(http.MethodPatch, path, map[string]any{"contact_email": "mo@personal.test"}).expect(http.StatusUnprocessableEntity) // unconfirmed
+	h.browser().do(http.MethodPost, "/auth/email/verify", map[string]string{"token": h.lastToken("mo@personal.test", "email_verification")}).expect(http.StatusNoContent)
+	member.b.do(http.MethodPatch, path, map[string]any{"contact_email": "mo@personal.test", "title": nil}).expect(http.StatusOK).json(&m)
+	if m.Email == nil || *m.Email != "mo@personal.test" || m.Title != nil || m.Role != "member" || m.Status != "active" {
+		t.Fatalf("contact email: %+v", m)
+	}
+	if h.auditCount(orgA, "member.profile_updated") != 2 {
+		t.Fatal("profile changes not audited")
+	}
+	// Not a member of the other organisation.
+	member.b.do(http.MethodPatch, "/orgs/"+orgB+"/me/membership", map[string]any{"title": "x"}).expect(http.StatusNotFound)
 }

@@ -592,6 +592,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orgs/{orgId}/me/membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update my title and contact email in this organisation */
+        patch: operations["updateOwnMembership"];
+        trace?: never;
+    };
     "/orgs/{orgId}/members": {
         parameters: {
             query?: never;
@@ -822,6 +842,16 @@ export interface components {
         MemberList: {
             data: components["schemas"]["Member"][];
             page: components["schemas"]["PageInfo"];
+        };
+        /**
+         * @description JSON Merge Patch of the caller's own membership. Role, status and organisation cannot be
+         *     changed here (unknown fields are rejected).
+         */
+        MembershipProfileUpdate: {
+            /** @description Must be one of the caller's confirmed email addresses. */
+            contact_email?: string;
+            /** @description Job title shown to co-members; null or empty clears it. */
+            title?: string | null;
         };
         /**
          * @description `active` members can use the organisation; `suspended` and `deactivated` members cannot.
@@ -2025,6 +2055,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invitation"];
+                };
+            };
+        };
+    };
+    updateOwnMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipProfileUpdate"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description The updated membership. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
                 };
             };
         };
