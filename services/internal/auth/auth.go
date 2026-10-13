@@ -49,6 +49,8 @@ type Accounts interface {
 	Profile(ctx context.Context, tx pgx.Tx, user tenant.UserID) (displayName, primaryEmail string, err error)
 	Email(ctx context.Context, tx pgx.Tx, user tenant.UserID, emailID uuid.UUID) (address string, verified bool, err error)
 	MarkEmailVerified(ctx context.Context, tx pgx.Tx, user tenant.UserID, emailID uuid.UUID) error
+	ScheduleDeletion(ctx context.Context, tx pgx.Tx, user tenant.UserID, requested, scheduled time.Time) (bool, error)
+	CancelDeletion(ctx context.Context, tx pgx.Tx, user tenant.UserID) (bool, error)
 }
 
 // Outbox queues platform emails inside a transaction.
@@ -74,6 +76,7 @@ type Deps struct {
 // Service implements the authentication use cases.
 type Service struct {
 	Deps
+	ownership Ownership
 }
 
 // New returns an auth service.

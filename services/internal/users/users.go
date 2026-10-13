@@ -54,6 +54,8 @@ type User struct {
 	Locale       string
 	PrimaryEmail string
 	CreatedAt    time.Time
+	// DeletionScheduledAt is set while an account deletion request is pending.
+	DeletionScheduledAt *time.Time
 }
 
 // Email is one of the caller's addresses.
@@ -105,6 +107,18 @@ func (s *Service) MarkEmailVerified(ctx context.Context, tx pgx.Tx, user tenant.
 		return err
 	}
 	return nil
+}
+
+// ScheduleDeletion starts the deletion grace period; false when one is already pending.
+func (s *Service) ScheduleDeletion(ctx context.Context, tx pgx.Tx, user tenant.UserID, requested, scheduled time.Time) (bool, error) {
+	n, err := store.New(tx).ScheduleDeletion(ctx, store.ScheduleDeletionParams{ID: uuid.UUID(user), RequestedAt: &requested, ScheduledAt: &scheduled})
+	return n == 1, err
+}
+
+// CancelDeletion ends a pending deletion request; false when none was pending.
+func (s *Service) CancelDeletion(ctx context.Context, tx pgx.Tx, user tenant.UserID) (bool, error) {
+	n, err := store.New(tx).CancelDeletion(ctx, uuid.UUID(user))
+	return n == 1, err
 }
 
 // HasVerifiedEmail reports whether the user owns a verified (or primary) copy of address.
@@ -206,7 +220,8 @@ func (s *Service) load(ctx context.Context, tx pgx.Tx, user tenant.UserID) (User
 	if err != nil {
 		return User{}, err
 	}
-	out := User{ID: u.ID, DisplayName: u.DisplayName, Timezone: u.Timezone, Locale: u.Locale, CreatedAt: u.CreatedAt}
+	out := User{ID: u.ID, DisplayName: u.DisplayName, Timezone: u.Timezone, Locale: u.Locale, CreatedAt: u.CreatedAt,
+		DeletionScheduledAt: u.DeletionScheduledAt}
 	if e, err := q.PrimaryEmail(ctx, uuid.UUID(user)); err == nil {
 		out.PrimaryEmail = e.Email
 	} else if !errors.Is(err, pgx.ErrNoRows) {

@@ -26,11 +26,14 @@ type UserJSON struct {
 	Timezone     string    `json:"timezone"`
 	Locale       string    `json:"locale"`
 	PrimaryEmail string    `json:"primary_email"`
+	// DeletionScheduledAt is when a pending account deletion takes effect (null otherwise).
+	DeletionScheduledAt *time.Time `json:"deletion_scheduled_at"`
 }
 
 // ToJSON converts a User.
 func ToJSON(u User) UserJSON {
-	return UserJSON{ID: u.ID, DisplayName: u.DisplayName, Timezone: u.Timezone, Locale: u.Locale, PrimaryEmail: u.PrimaryEmail}
+	return UserJSON{ID: u.ID, DisplayName: u.DisplayName, Timezone: u.Timezone, Locale: u.Locale, PrimaryEmail: u.PrimaryEmail,
+		DeletionScheduledAt: u.DeletionScheduledAt}
 }
 
 type emailJSON struct {

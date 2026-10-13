@@ -46,6 +46,7 @@ BEGIN
       avatar_version = avatar_version + 1, deletion_requested_at = NULL,
       deletion_scheduled_at = NULL, updated_at = now()
   WHERE id = p_user;
+  INSERT INTO account_audit_events (user_id, action, outcome) VALUES (p_user, 'account.anonymised', 'success');
   RETURN true;
 END
 $$;

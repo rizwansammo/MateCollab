@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [scheduled_at]
+properties:
+  scheduled_at:
+    $ref: ./Timestamp.yaml
+    description: When the account will be anonymised unless the request is cancelled first.

@@ -25,6 +25,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/platform/mailer"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/redisx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/telemetry"
+	"github.com/rizwansammo/MateCollab/services/internal/users"
 )
 
 func main() {
@@ -88,8 +89,9 @@ func run(ctx context.Context) error {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &jobs.HeartbeatWorker{Metrics: metrics, Logger: logger})
 	river.AddWorker(workers, &emails.Worker{Sender: smtp, Keyring: keyring, Logger: logger})
+	river.AddWorker(workers, &users.PurgeWorker{Pool: pool, Logger: logger})
 
-	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic()})
+	client, err := jobs.NewWorkerClient(pool, logger, workers, []*river.PeriodicJob{jobs.HeartbeatPeriodic(), users.PurgePeriodic()})
 	if err != nil {
 		return fmt.Errorf("river: %w", err)
 	}

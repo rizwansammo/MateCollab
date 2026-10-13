@@ -11,6 +11,8 @@ import (
 
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
 	"github.com/rizwansammo/MateCollab/services/internal/orgs"
+	"github.com/rizwansammo/MateCollab/services/internal/testkit"
+	"github.com/rizwansammo/MateCollab/services/internal/users"
 )
 
 func userID(a *account) string {
@@ -140,4 +142,90 @@ func TestOwnMembershipProfile(t *testing.T) {
 	}
 	// Not a member of the other organisation.
 	member.b.do(http.MethodPatch, "/orgs/"+orgB+"/me/membership", map[string]any{"title": "x"}).expect(http.StatusNotFound)
+}
+
+func TestAccountDeletion(t *testing.T) {
+	h := newHarness(t, nil)
+	ctx := context.Background()
+	orgA, owner := h.seedOrg("Acme", "acme", "owner@acme.test")
+	_, tok := h.invite(owner.b, orgA, "member@acme.test", "member")
+	member := h.join(tok, "member@acme.test", "Mo Member")
+	_, tok = h.invite(owner.b, orgA, "admin@acme.test", "admin")
+	admin := h.join(tok, "admin@acme.test", "Ada Admin")
+	memberID := userID(member)
+
+	h.run("owners must transfer ownership first", func(t *testing.T) {
+		owner.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusConflict, "ownership_transfer_required")
+	})
+
+	h.run("request needs a recent password check, then schedules a 30-day grace period", func(t *testing.T) {
+		h.clock.Advance(auth.StepUpWindow + time.Minute)
+		member.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusForbidden, "reauthentication_required")
+		member.b.do(http.MethodPost, "/auth/reauthenticate", map[string]string{"password": member.password}).expect(http.StatusNoContent)
+		h.clock.Advance(-(auth.StepUpWindow + time.Minute))
+		res := member.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusAccepted).m()
+		at, err := time.Parse(time.RFC3339Nano, res["scheduled_at"].(string))
+		if err != nil || at.Sub(time.Now()) < auth.DeletionGrace-time.Hour {
+			t.Fatalf("scheduled_at %v (%v)", res, err)
+		}
+		if member.b.refresh()["user"].(map[string]any)["deletion_scheduled_at"] == nil {
+			t.Fatal("session document does not show the pending deletion")
+		}
+		member.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusConflict, "deletion_already_requested")
+		if n := len(h.emails("member@acme.test")); n == 0 || h.emails("member@acme.test")[n-1].Template != "account_deletion_requested" {
+			t.Fatal("no deletion email")
+		}
+	})
+
+	h.run("a user scheduled for deletion cannot receive ownership", func(t *testing.T) {
+		owner.b.do(http.MethodPatch, "/orgs/"+orgA+"/members/"+memberID, map[string]string{"role": "admin"}).expect(http.StatusOK)
+		owner.b.do(http.MethodPost, "/orgs/"+orgA+"/ownership-transfer", map[string]string{"user_id": memberID}).expect(http.StatusConflict, "transfer_target_inactive")
+	})
+
+	h.run("cancel", func(t *testing.T) {
+		member.b.do(http.MethodDelete, "/me/deletion", nil).expect(http.StatusNoContent)
+		member.b.do(http.MethodDelete, "/me/deletion", nil).expect(http.StatusConflict, "no_deletion_requested")
+		if member.b.refresh()["user"].(map[string]any)["deletion_scheduled_at"] != nil {
+			t.Fatal("deletion still pending")
+		}
+		var n int
+		if err := h.db.Owner.QueryRow(ctx, `SELECT count(*) FROM account_audit_events WHERE user_id = $1 AND action IN ('account.deletion_requested','account.deletion_cancelled')`, memberID).Scan(&n); err != nil || n != 2 {
+			t.Fatalf("account events: %d %v", n, err)
+		}
+	})
+
+	h.run("after the grace period the account is anonymised, never an Owner", func(t *testing.T) {
+		member.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusAccepted)
+		admin.b.do(http.MethodPost, "/me/deletion", nil).expect(http.StatusAccepted)
+		// The admin becomes Owner through operator tooling after requesting deletion: the purge
+		// must refuse to remove an Owner.
+		if _, err := h.svc.Orgs.AssignOwner(ctx, "acme", orgs.OwnerSpec{Email: "admin@acme.test"}); err != nil {
+			t.Fatal(err)
+		}
+		worker := &users.PurgeWorker{Pool: h.db.App, Logger: testkit.Logger(t), Now: func() time.Time { return time.Now().Add(auth.DeletionGrace + time.Hour) }}
+		if err := worker.Work(ctx, nil); err != nil {
+			t.Fatal(err)
+		}
+		status := func(id string) (s string, name string) {
+			if err := h.db.Owner.QueryRow(ctx, `SELECT status, display_name FROM users WHERE id = $1`, id).Scan(&s, &name); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		if s, name := status(memberID); s != "anonymised" || name != "Deleted user" {
+			t.Fatalf("member: %s %s", s, name)
+		}
+		if s, _ := status(userID(admin)); s != "active" {
+			t.Fatalf("an Owner was anonymised: %s", s)
+		}
+		var emails, sessions int
+		var memberStatus string
+		_ = h.db.Owner.QueryRow(ctx, `SELECT count(*) FROM user_emails WHERE user_id = $1`, memberID).Scan(&emails)
+		_ = h.db.Owner.QueryRow(ctx, `SELECT count(*) FROM sessions WHERE user_id = $1`, memberID).Scan(&sessions)
+		_ = h.db.Owner.QueryRow(ctx, `SELECT status FROM organisation_memberships WHERE user_id = $1`, memberID).Scan(&memberStatus)
+		if emails != 0 || sessions != 0 || memberStatus != "deactivated" {
+			t.Fatalf("leftovers: emails=%d sessions=%d membership=%s", emails, sessions, memberStatus)
+		}
+		h.browser().do(http.MethodPost, "/auth/login", map[string]string{"email": "member@acme.test", "password": member.password}).expect(http.StatusUnauthorized)
+	})
 }

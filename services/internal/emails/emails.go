@@ -38,6 +38,8 @@ const (
 	MFADisabled              Template = "mfa_disabled"
 	RecoveryCodeUsed         Template = "recovery_code_used"
 	RecoveryCodesRegenerated Template = "recovery_codes_regenerated"
+	AccountDeletionRequested Template = "account_deletion_requested"
+	AccountDeletionCancelled Template = "account_deletion_cancelled"
 )
 
 // Message is one email to send. Data values are plain strings; templates decide what to show.
@@ -210,6 +212,20 @@ func render(m Message) (content, error) {
 		return content{
 			subject: "New recovery codes were created", greeting: hi,
 			paragraphs: []string{"New recovery codes were created for your MateCollab account. Your previous codes no longer work."},
+		}, need("name")
+	case AccountDeletionRequested:
+		return content{
+			subject: "Your MateCollab account is scheduled for deletion", greeting: hi,
+			paragraphs: []string{
+				"You asked us to delete your MateCollab account. It will be deleted on " + d["date"] + ".",
+				"Until then you can sign in and cancel the request in Settings → Privacy. After that date your name is replaced with \"Deleted user\" and your sign-in details are removed.",
+			},
+			after: []string{"If you didn't ask for this, sign in, cancel the request and change your password."},
+		}, need("name", "date")
+	case AccountDeletionCancelled:
+		return content{
+			subject: "Your account deletion was cancelled", greeting: hi,
+			paragraphs: []string{"The request to delete your MateCollab account was cancelled. Your account stays active."},
 		}, need("name")
 	}
 	return content{}, fmt.Errorf("emails: unknown template %q", m.Template)

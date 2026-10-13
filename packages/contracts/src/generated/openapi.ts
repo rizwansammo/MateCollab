@@ -389,6 +389,31 @@ export interface paths {
         patch: operations["updateMe"];
         trace?: never;
     };
+    "/me/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request deletion of my account
+         * @description Needs a recent password check (`403 reauthentication_required`). Owners must transfer
+         *     ownership first (`409 ownership_transfer_required`). The account stays usable for a 30-day
+         *     grace period, during which the request can be cancelled; afterwards it is anonymised (name
+         *     replaced with "Deleted user", sign-in details and email addresses removed, memberships
+         *     deactivated) and content stays in its organisations.
+         */
+        post: operations["requestAccountDeletion"];
+        /** Cancel a pending account deletion */
+        delete: operations["cancelAccountDeletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/emails": {
         parameters: {
             query?: never;
@@ -730,6 +755,10 @@ export interface components {
             organisation: components["schemas"]["OrganisationRef"];
             /** @description True when the browser now has a session (always, after creating an account). */
             signed_in: boolean;
+        };
+        AccountDeletion: {
+            /** @description When the account will be anonymised unless the request is cancelled first. */
+            scheduled_at: components["schemas"]["Timestamp"];
         };
         ChangePasswordRequest: {
             new_password: string;
@@ -1115,6 +1144,8 @@ export interface components {
         };
         /** @description The signed-in user's global profile (shared by every organisation they belong to). */
         User: {
+            /** @description When a pending account deletion takes effect; null when none is pending. */
+            deletion_scheduled_at: components["schemas"]["NullableTimestamp"];
             display_name: string;
             id: components["schemas"]["Id"];
             /** @example en-GB */
@@ -1700,6 +1731,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["User"];
                 };
+            };
+        };
+    };
+    requestAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Scheduled; a confirmation email is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletion"];
+                };
+            };
+        };
+    };
+    cancelAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Cancelled (`409 no_deletion_requested` when nothing was pending). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

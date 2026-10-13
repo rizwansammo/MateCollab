@@ -13,6 +13,20 @@ import (
 	"github.com/google/uuid"
 )
 
+const cancelDeletion = `-- name: CancelDeletion :execrows
+UPDATE users
+SET deletion_requested_at = NULL, deletion_scheduled_at = NULL, updated_at = now()
+WHERE id = $1 AND deletion_requested_at IS NOT NULL
+`
+
+func (q *Queries) CancelDeletion(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelDeletion, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearPrimaryEmail = `-- name: ClearPrimaryEmail :exec
 UPDATE user_emails SET is_primary = false WHERE user_id = $1 AND is_primary
 `
@@ -151,18 +165,21 @@ func (q *Queries) GetPreferences(ctx context.Context, userID uuid.UUID) (GetPref
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, display_name, timezone, locale, status, avatar_version, created_at
+SELECT id, display_name, timezone, locale, status, avatar_version, created_at,
+       deletion_requested_at, deletion_scheduled_at
 FROM users WHERE id = $1
 `
 
 type GetUserRow struct {
-	ID            uuid.UUID
-	DisplayName   string
-	Timezone      string
-	Locale        string
-	Status        string
-	AvatarVersion int32
-	CreatedAt     time.Time
+	ID                  uuid.UUID
+	DisplayName         string
+	Timezone            string
+	Locale              string
+	Status              string
+	AvatarVersion       int32
+	CreatedAt           time.Time
+	DeletionRequestedAt *time.Time
+	DeletionScheduledAt *time.Time
 }
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (GetUserRow, error) {
@@ -176,6 +193,8 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (GetUserRow, error)
 		&i.Status,
 		&i.AvatarVersion,
 		&i.CreatedAt,
+		&i.DeletionRequestedAt,
+		&i.DeletionScheduledAt,
 	)
 	return i, err
 }
@@ -280,6 +299,26 @@ type SavePreferencesParams struct {
 func (q *Queries) SavePreferences(ctx context.Context, arg SavePreferencesParams) error {
 	_, err := q.db.Exec(ctx, savePreferences, arg.UserID, arg.Prefs, arg.SchemaVersion)
 	return err
+}
+
+const scheduleDeletion = `-- name: ScheduleDeletion :execrows
+UPDATE users
+SET deletion_requested_at = $1, deletion_scheduled_at = $2, updated_at = now()
+WHERE id = $3 AND status = 'active' AND deletion_requested_at IS NULL
+`
+
+type ScheduleDeletionParams struct {
+	RequestedAt *time.Time
+	ScheduledAt *time.Time
+	ID          uuid.UUID
+}
+
+func (q *Queries) ScheduleDeletion(ctx context.Context, arg ScheduleDeletionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, scheduleDeletion, arg.RequestedAt, arg.ScheduledAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setPrimaryEmail = `-- name: SetPrimaryEmail :execrows

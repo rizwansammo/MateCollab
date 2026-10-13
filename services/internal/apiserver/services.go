@@ -71,6 +71,7 @@ func NewServices(d Deps) (*Services, error) {
 		Pool: d.Pool, Redis: d.Redis, Auth: authSvc, Users: userSvc, Outbox: outbox, Limiter: limiter,
 		CursorKey: subkeys.Cursor, PublicURL: cfg.PublicURL, Logger: d.Logger, Now: d.Now,
 	})
+	authSvc.SetOwnership(memberSvc)
 	orgSvc := orgs.New(orgs.Deps{
 		Pool: d.Pool, Redis: d.Redis, Auth: authSvc, Users: userSvc, Memberships: memberSvc, Limiter: limiter,
 		AllowSignup: cfg.Features.AllowOrgSignup, Logger: d.Logger, Now: d.Now,

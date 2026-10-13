@@ -145,6 +145,18 @@ func (s *Service) MyOrganisations(ctx context.Context, user tenant.UserID) ([]My
 	return out, err
 }
 
+// OwnedOrganisations names the organisations the user owns (blocks account deletion).
+func (s *Service) OwnedOrganisations(ctx context.Context, user tenant.UserID) ([]string, error) {
+	list, err := s.MyOrganisations(ctx, user)
+	var owned []string
+	for _, o := range list {
+		if o.Role == tenant.RoleOwner {
+			owned = append(owned, o.Name)
+		}
+	}
+	return owned, err
+}
+
 // AddOwner creates the Owner membership of a new organisation (tx carries its tenant context).
 func (s *Service) AddOwner(ctx context.Context, tx *db.Tx, org tenant.OrgID, user tenant.UserID, contactEmail string) error {
 	return store.New(tx).InsertMembership(ctx, store.InsertMembershipParams{

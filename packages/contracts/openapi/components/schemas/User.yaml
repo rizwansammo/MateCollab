@@ -1,7 +1,7 @@
 type: object
 description: The signed-in user's global profile (shared by every organisation they belong to).
 additionalProperties: false
-required: [id, display_name, timezone, locale, primary_email]
+required: [id, display_name, timezone, locale, primary_email, deletion_scheduled_at]
 properties:
   id:
     $ref: ./Id.yaml
@@ -19,3 +19,6 @@ properties:
   primary_email:
     type: string
     maxLength: 254
+  deletion_scheduled_at:
+    $ref: ./NullableTimestamp.yaml
+    description: When a pending account deletion takes effect; null when none is pending.

@@ -1,0 +1,38 @@
+post:
+  operationId: requestAccountDeletion
+  summary: Request deletion of my account
+  description: |
+    Needs a recent password check (`403 reauthentication_required`). Owners must transfer
+    ownership first (`409 ownership_transfer_required`). The account stays usable for a 30-day
+    grace period, during which the request can be cancelled; afterwards it is anonymised (name
+    replaced with "Deleted user", sign-in details and email addresses removed, memberships
+    deactivated) and content stays in its organisations.
+  tags: [account]
+  security:
+    - session: []
+      csrf: []
+  responses:
+    '202':
+      description: Scheduled; a confirmation email is queued.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/AccountDeletion.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+delete:
+  operationId: cancelAccountDeletion
+  summary: Cancel a pending account deletion
+  tags: [account]
+  security:
+    - session: []
+      csrf: []
+  responses:
+    '204':
+      description: Cancelled (`409 no_deletion_requested` when nothing was pending).
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -13,6 +13,7 @@ import {
   Layers,
   LayoutGrid,
   LifeBuoy,
+  LockKeyhole,
   MessageSquare,
   MessagesSquare,
   Palette,
@@ -147,6 +148,7 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
         icon: ShieldCheck,
       },
       { label: 'Appearance', href: '/settings/appearance', path: '/settings/appearance', icon: Palette },
+      { label: 'Privacy', href: '/settings/privacy', path: '/settings/privacy', icon: LockKeyhole },
     ],
   },
   admin: {

@@ -5,8 +5,19 @@
 INSERT INTO users (id, display_name, timezone, locale) VALUES ($1, $2, $3, $4);
 
 -- name: GetUser :one
-SELECT id, display_name, timezone, locale, status, avatar_version, created_at
+SELECT id, display_name, timezone, locale, status, avatar_version, created_at,
+       deletion_requested_at, deletion_scheduled_at
 FROM users WHERE id = $1;
+
+-- name: ScheduleDeletion :execrows
+UPDATE users
+SET deletion_requested_at = @requested_at, deletion_scheduled_at = @scheduled_at, updated_at = now()
+WHERE id = @id AND status = 'active' AND deletion_requested_at IS NULL;
+
+-- name: CancelDeletion :execrows
+UPDATE users
+SET deletion_requested_at = NULL, deletion_scheduled_at = NULL, updated_at = now()
+WHERE id = @id AND deletion_requested_at IS NOT NULL;
 
 -- name: UpdateProfile :one
 UPDATE users

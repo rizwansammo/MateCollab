@@ -1067,6 +1067,64 @@
         }
       }
     },
+    "/me/deletion": {
+      "post": {
+        "operationId": "requestAccountDeletion",
+        "summary": "Request deletion of my account",
+        "description": "Needs a recent password check (`403 reauthentication_required`). Owners must transfer\nownership first (`409 ownership_transfer_required`). The account stays usable for a 30-day\ngrace period, during which the request can be cancelled; afterwards it is anonymised (name\nreplaced with \"Deleted user\", sign-in details and email addresses removed, memberships\ndeactivated) and content stays in its organisations.\n",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Scheduled; a confirmation email is queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletion"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelAccountDeletion",
+        "summary": "Cancel a pending account deletion",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cancelled (`409 no_deletion_requested` when nothing was pending)."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
     "/invitations/preview": {
       "post": {
         "operationId": "previewInvitation",
@@ -2183,7 +2241,8 @@
           "display_name",
           "timezone",
           "locale",
-          "primary_email"
+          "primary_email",
+          "deletion_scheduled_at"
         ],
         "properties": {
           "id": {
@@ -2210,6 +2269,10 @@
           "primary_email": {
             "type": "string",
             "maxLength": 254
+          },
+          "deletion_scheduled_at": {
+            "$ref": "#/components/schemas/NullableTimestamp",
+            "description": "When a pending account deletion takes effect; null when none is pending."
           }
         }
       },
@@ -3180,6 +3243,19 @@
             "type": "string",
             "maxLength": 254,
             "description": "Must be one of the caller's confirmed email addresses."
+          }
+        }
+      },
+      "AccountDeletion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scheduled_at"
+        ],
+        "properties": {
+          "scheduled_at": {
+            "$ref": "#/components/schemas/Timestamp",
+            "description": "When the account will be anonymised unless the request is cancelled first."
           }
         }
       }

@@ -107,6 +107,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/auth/mfa/recovery-codes", h.regenerateRecoveryCodes)
 		r.Put("/auth/password", h.changePassword)
 		r.Post("/auth/email/resend", h.resendVerification)
+		r.Post("/me/deletion", h.requestDeletion)
+		r.Delete("/me/deletion", h.cancelDeletion)
 	})
 }
 
@@ -442,4 +444,23 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.signedIn(w, r, ns)
+}
+
+func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
+	p, _ := PrincipalFrom(r.Context())
+	at, err := h.svc.RequestDeletion(r.Context(), p, httpx.ClientMetaFrom(r))
+	if err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusAccepted, map[string]time.Time{"scheduled_at": at})
+}
+
+func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
+	p, _ := PrincipalFrom(r.Context())
+	if err := h.svc.CancelDeletion(r.Context(), p, httpx.ClientMetaFrom(r)); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
