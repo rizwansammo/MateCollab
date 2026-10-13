@@ -13,7 +13,8 @@ export default defineConfig({
   timeout: 90_000,
   expect: {
     timeout: 15_000,
-    toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: 'disabled', caret: 'hide', scale: 'css' },
+    // An absolute budget: on a full page a ratio hides real changes (one sidebar row ≈ 2,000 px).
+    toHaveScreenshot: { maxDiffPixels: 500, animations: 'disabled', caret: 'hide', scale: 'css' },
   },
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',

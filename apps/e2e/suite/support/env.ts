@@ -75,7 +75,9 @@ export function totp(secretBase32: string, at = Date.now()): string {
 
 /** Waits until the next 30-second TOTP step, so a code is never reused (replay protection). */
 export async function nextTotpWindow(page: Page) {
-  const ms = 30_000 - (Date.now() % 30_000) + 250;
+  // A clear margin past the boundary: the server's clock and request latency must not put the
+  // code back in the step that was already used.
+  const ms = 30_000 - (Date.now() % 30_000) + 1_500;
   await page.waitForTimeout(ms);
 }
 

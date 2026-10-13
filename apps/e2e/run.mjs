@@ -71,7 +71,8 @@ function createOrganisation(name, slug, ownerEmail, ownerName) {
     '--owner-name',
     ownerName,
   ];
-  const hasGo = capture('go', ['version']) !== null;
+  // E2E_SEED=docker uses the built mcctl image (CI); otherwise a local Go toolchain if present.
+  const hasGo = process.env.E2E_SEED !== 'docker' && capture('go', ['version']) !== null;
   const out = hasGo
     ? capture(process.execPath, [path.join(ROOT, 'scripts', 'mcctl.mjs'), ...create], { cwd: ROOT })
     : capture(
