@@ -542,8 +542,9 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update the organisation profile
-         * @description Requires `org.settings.manage`.
+         * Update the organisation profile (Admin → General)
+         * @description Requires `org.settings.manage`. With `If-Match` (the `ETag` of the version being changed) a
+         *     concurrent change answers `412 version_mismatch` instead of being overwritten.
          */
         patch: operations["updateOrganisation"];
         trace?: never;
@@ -705,6 +706,29 @@ export interface paths {
          *     the Owner and the previous Owner becomes an Admin; an audit event is recorded.
          */
         post: operations["transferOwnership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Roles and their effective permissions
+         * @description Any member may read it. Roles are fixed (Owner, Admin, Member, Guest); there is no custom role editing.
+         */
+        get: operations["getRoleCatalogue"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1009,6 +1033,29 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "admin" | "member" | "guest";
+        /**
+         * @description The fixed role model with this organisation's effective permissions, derived from the server's
+         *     authorisation catalogue and the organisation's current settings.
+         */
+        RoleCatalogue: {
+            permissions: {
+                /** @description Organisation setting that changes who holds this permission. */
+                depends_on?: string;
+                description: string;
+                /** @example org.members.invite */
+                id: string;
+            }[];
+            roles: {
+                /** @description Permission IDs this role holds in this organisation. */
+                permissions: string[];
+                role: components["schemas"]["Role"];
+            }[];
+            settings: {
+                allow_guest_invites: boolean;
+                /** @enum {string} */
+                invite_permission: "admins" | "members";
+            };
+        };
         /** @description Deployment settings exposed to the web client before sign-in. */
         RuntimeConfig: {
             /** @constant */
@@ -1139,7 +1186,18 @@ export interface components {
             role?: components["schemas"]["Role"];
             status?: components["schemas"]["MembershipStatus"];
         };
+        /** @description JSON Merge Patch of the organisation profile; omitted fields are unchanged. */
         UpdateOrganisationRequest: {
+            /**
+             * @description BCP 47 language tag.
+             * @example en-GB
+             */
+            default_locale?: string;
+            /**
+             * @description IANA time zone used for organisation-wide defaults.
+             * @example Asia/Dhaka
+             */
+            default_timezone?: string;
             name?: string;
         };
         /** @description The signed-in user's global profile (shared by every organisation they belong to). */
@@ -1983,6 +2041,8 @@ export interface operations {
             /** @description The organisation. */
             200: {
                 headers: {
+                    /** @description Profile version; send it back in `If-Match` when updating. */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1994,7 +2054,9 @@ export interface operations {
     updateOrganisation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "If-Match"?: string;
+            };
             path: {
                 /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
                 orgId: components["parameters"]["OrgId"];
@@ -2012,6 +2074,8 @@ export interface operations {
             /** @description Updated. */
             200: {
                 headers: {
+                    /** @description The new profile version. */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -2275,6 +2339,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getRoleCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description The role model. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleCatalogue"];
+                };
             };
         };
     };

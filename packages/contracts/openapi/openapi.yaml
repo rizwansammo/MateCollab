@@ -108,6 +108,8 @@ paths:
     $ref: ./paths/org-ownership-transfer.yaml
   /orgs/{orgId}/me/membership:
     $ref: ./paths/org-me-membership.yaml
+  /orgs/{orgId}/roles:
+    $ref: ./paths/org-roles.yaml
 components:
   securitySchemes:
     session:
@@ -248,6 +250,8 @@ components:
       $ref: ./components/schemas/MembershipProfileUpdate.yaml
     AccountDeletion:
       $ref: ./components/schemas/AccountDeletion.yaml
+    RoleCatalogue:
+      $ref: ./components/schemas/RoleCatalogue.yaml
   responses:
     Problem:
       $ref: ./components/responses/Problem.yaml

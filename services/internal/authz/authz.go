@@ -28,7 +28,36 @@ const (
 	OrgOwnershipTransfer Permission = "org.ownership.transfer"
 	OrgDelete            Permission = "org.delete"
 	AuditView            Permission = "audit.view"
+	AuditExport          Permission = "audit.export"
 )
+
+// PermissionInfo documents one permission for the Roles & Permissions view.
+type PermissionInfo struct {
+	ID          Permission
+	Description string
+	// DependsOn names the organisation setting that changes who holds it.
+	DependsOn string
+}
+
+// Catalogue lists every implemented organisation permission in display order. Allowed is the
+// single source of who holds each one; the API derives the role matrix from both.
+func Catalogue() []PermissionInfo {
+	return []PermissionInfo{
+		{OrgView, "Open the organisation and see its profile", ""},
+		{OrgDirectoryView, "See the member directory", ""},
+		{OrgMembersInvite, "Invite Members", "security.invite_permission"},
+		{OrgGuestsInvite, "Invite Guests", "security.allow_guest_invites"},
+		{OrgInvitationsView, "See invitations", "security.invite_permission"},
+		{OrgMembersManage, "Change Members' and Guests' roles and access", ""},
+		{OrgAdminsManage, "Invite, promote and manage Admins", ""},
+		{OrgSettingsManage, "Change the organisation profile and settings", ""},
+		{OrgSecurityManage, "Change the security policy (2FA, session length, invitations)", ""},
+		{AuditView, "View the audit log", ""},
+		{AuditExport, "Export the audit log", ""},
+		{OrgOwnershipTransfer, "Transfer ownership", ""},
+		{OrgDelete, "Delete the organisation", ""},
+	}
+}
 
 // Settings are the organisation settings that refine role permissions (the `security` section).
 type Settings struct {
@@ -46,7 +75,7 @@ func Allowed(role tenant.Role, s Settings, p Permission) bool {
 	switch p {
 	case OrgView:
 		return role.Valid()
-	case OrgSettingsManage, OrgSecurityManage, OrgMembersManage, AuditView:
+	case OrgSettingsManage, OrgSecurityManage, OrgMembersManage, AuditView, AuditExport:
 		return isAdmin(role)
 	case OrgDirectoryView:
 		return isAdmin(role) || role == tenant.RoleMember

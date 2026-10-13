@@ -109,18 +109,23 @@ func (q *Queries) GetSettingsSection(ctx context.Context, arg GetSettingsSection
 	return i, err
 }
 
-const updateOrganisationName = `-- name: UpdateOrganisationName :one
-UPDATE organisations SET name = $1, updated_at = now()
-WHERE id = $2
+const updateOrganisationProfile = `-- name: UpdateOrganisationProfile :one
+UPDATE organisations
+SET name = $1, default_timezone = $2, default_locale = $3, updated_at = now()
+WHERE id = $4
+  AND ($5::timestamptz IS NULL OR updated_at = $5::timestamptz)
 RETURNING id, slug, name, status, default_timezone, default_locale, created_at, updated_at
 `
 
-type UpdateOrganisationNameParams struct {
-	Name  string
-	OrgID uuid.UUID
+type UpdateOrganisationProfileParams struct {
+	Name              string
+	DefaultTimezone   string
+	DefaultLocale     string
+	OrgID             uuid.UUID
+	ExpectedUpdatedAt *time.Time
 }
 
-type UpdateOrganisationNameRow struct {
+type UpdateOrganisationProfileRow struct {
 	ID              uuid.UUID
 	Slug            string
 	Name            string
@@ -131,9 +136,17 @@ type UpdateOrganisationNameRow struct {
 	UpdatedAt       time.Time
 }
 
-func (q *Queries) UpdateOrganisationName(ctx context.Context, arg UpdateOrganisationNameParams) (UpdateOrganisationNameRow, error) {
-	row := q.db.QueryRow(ctx, updateOrganisationName, arg.Name, arg.OrgID)
-	var i UpdateOrganisationNameRow
+// Optimistic concurrency: with expected_updated_at (from the ETag) the update applies only to
+// the version the client saw.
+func (q *Queries) UpdateOrganisationProfile(ctx context.Context, arg UpdateOrganisationProfileParams) (UpdateOrganisationProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateOrganisationProfile,
+		arg.Name,
+		arg.DefaultTimezone,
+		arg.DefaultLocale,
+		arg.OrgID,
+		arg.ExpectedUpdatedAt,
+	)
+	var i UpdateOrganisationProfileRow
 	err := row.Scan(
 		&i.ID,
 		&i.Slug,

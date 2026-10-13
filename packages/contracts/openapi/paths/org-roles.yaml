@@ -1,0 +1,20 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: getRoleCatalogue
+  summary: Roles and their effective permissions
+  description: Any member may read it. Roles are fixed (Owner, Admin, Member, Guest); there is no custom role editing.
+  tags: [members]
+  security:
+    - session: []
+  responses:
+    '200':
+      description: The role model.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/RoleCatalogue.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

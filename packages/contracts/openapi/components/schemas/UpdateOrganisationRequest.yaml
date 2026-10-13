@@ -1,6 +1,17 @@
 type: object
+description: JSON Merge Patch of the organisation profile; omitted fields are unchanged.
 additionalProperties: false
 properties:
   name:
     type: string
     maxLength: 100
+  default_timezone:
+    type: string
+    maxLength: 64
+    description: IANA time zone used for organisation-wide defaults.
+    examples: [Asia/Dhaka]
+  default_locale:
+    type: string
+    maxLength: 35
+    description: BCP 47 language tag.
+    examples: [en-GB]

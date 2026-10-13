@@ -26,6 +26,26 @@ var matrix = map[Permission][4]bool{ // owner, admin, member, guest
 	OrgOwnershipTransfer: {true, false, false, false},
 	OrgDelete:            {true, false, false, false},
 	AuditView:            {true, true, false, false},
+	AuditExport:          {true, true, false, false},
+}
+
+// The catalogue served to the Roles & Permissions view lists exactly the permissions above.
+func TestCatalogueCoversEveryPermission(t *testing.T) {
+	seen := map[Permission]bool{}
+	for _, p := range Catalogue() {
+		if seen[p.ID] || p.Description == "" {
+			t.Fatalf("duplicate or undescribed permission %q", p.ID)
+		}
+		seen[p.ID] = true
+		if _, ok := matrix[p.ID]; !ok {
+			t.Errorf("%s is in the catalogue but not in the matrix", p.ID)
+		}
+	}
+	for p := range matrix {
+		if !seen[p] {
+			t.Errorf("%s is missing from the catalogue", p)
+		}
+	}
 }
 
 func TestPermissionMatrix(t *testing.T) {

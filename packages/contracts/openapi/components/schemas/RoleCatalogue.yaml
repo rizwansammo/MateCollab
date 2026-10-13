@@ -1,0 +1,46 @@
+type: object
+description: |
+  The fixed role model with this organisation's effective permissions, derived from the server's
+  authorisation catalogue and the organisation's current settings.
+additionalProperties: false
+required: [permissions, roles, settings]
+properties:
+  permissions:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, description]
+      properties:
+        id:
+          type: string
+          examples: [org.members.invite]
+        description:
+          type: string
+        depends_on:
+          type: string
+          description: Organisation setting that changes who holds this permission.
+  roles:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [role, permissions]
+      properties:
+        role:
+          $ref: ./Role.yaml
+        permissions:
+          type: array
+          description: Permission IDs this role holds in this organisation.
+          items:
+            type: string
+  settings:
+    type: object
+    additionalProperties: false
+    required: [invite_permission, allow_guest_invites]
+    properties:
+      invite_permission:
+        type: string
+        enum: [admins, members]
+      allow_guest_invites:
+        type: boolean

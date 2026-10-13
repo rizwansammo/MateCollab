@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/text/language"
 
 	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
@@ -346,39 +347,80 @@ func (s *Service) Get(ctx context.Context, a tenant.Actor) (Organisation, error)
 	return out, err
 }
 
-// Update renames the organisation.
-func (s *Service) Update(ctx context.Context, a tenant.Actor, name *string, meta httpx.ClientMeta) (Organisation, error) {
+// ProfileUpdate changes the organisation profile (Admin → General); nil fields are unchanged.
+type ProfileUpdate struct {
+	Name            *string
+	DefaultTimezone *string
+	DefaultLocale   *string
+}
+
+// Update changes the organisation profile. With ifMatch (the ETag the client saw) a concurrent
+// change answers 412 instead of being overwritten.
+func (s *Service) Update(ctx context.Context, a tenant.Actor, in ProfileUpdate, ifMatch *time.Time, meta httpx.ClientMeta) (Organisation, error) {
 	if err := authz.Check(a, authz.SettingsFrom(ctx), authz.OrgSettingsManage); err != nil {
 		return Organisation{}, err
 	}
 	var out Organisation
 	err := db.InTenantTx(ctx, s.Pool, a.Scope(), func(tx *db.Tx) error {
-		var err error
-		if name == nil {
-			out, err = s.get(ctx, tx, a.OrgID)
-			return err
-		}
-		clean, err := ValidateName(*name)
-		if err != nil {
-			return err
-		}
 		before, err := s.get(ctx, tx, a.OrgID)
 		if err != nil {
 			return err
 		}
-		r, err := store.New(tx).UpdateOrganisationName(ctx, store.UpdateOrganisationNameParams{OrgID: uuid.UUID(a.OrgID), Name: clean})
+		next := store.UpdateOrganisationProfileParams{OrgID: uuid.UUID(a.OrgID), Name: before.Name,
+			DefaultTimezone: before.DefaultTimezone, DefaultLocale: before.DefaultLocale, ExpectedUpdatedAt: ifMatch}
+		var fields []apperr.FieldError
+		if in.Name != nil {
+			clean, err := ValidateName(*in.Name)
+			if e, ok := apperr.As(err); ok {
+				fields = append(fields, e.Fields...)
+			}
+			next.Name = clean
+		}
+		if in.DefaultTimezone != nil {
+			if _, err := time.LoadLocation(*in.DefaultTimezone); err != nil || *in.DefaultTimezone == "" || *in.DefaultTimezone == "Local" || len(*in.DefaultTimezone) > 64 {
+				fields = append(fields, apperr.Field("default_timezone", "invalid", "Choose a time zone from the list."))
+			}
+			next.DefaultTimezone = *in.DefaultTimezone
+		}
+		if in.DefaultLocale != nil {
+			tag, err := language.Parse(*in.DefaultLocale)
+			if err != nil || len(*in.DefaultLocale) > 35 {
+				fields = append(fields, apperr.Field("default_locale", "invalid", "Choose a language from the list."))
+			} else {
+				next.DefaultLocale = tag.String()
+			}
+		}
+		if len(fields) > 0 {
+			return apperr.Validation(fields...)
+		}
+		r, err := store.New(tx).UpdateOrganisationProfile(ctx, next)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errVersionMismatch
+		}
 		if err != nil {
 			return err
 		}
 		out = Organisation{ID: r.ID, Slug: r.Slug, Name: r.Name, Status: r.Status, DefaultTimezone: r.DefaultTimezone,
 			DefaultLocale: r.DefaultLocale, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}
-		if before.Name == clean {
+		var changed []string
+		if out.Name != before.Name {
+			changed = append(changed, "name")
+		}
+		if out.DefaultTimezone != before.DefaultTimezone {
+			changed = append(changed, "default_timezone")
+		}
+		if out.DefaultLocale != before.DefaultLocale {
+			changed = append(changed, "default_locale")
+		}
+		if len(changed) == 0 {
 			return nil
 		}
 		return audit.RecordActor(ctx, tx, a, meta, audit.Entry{Action: "org.updated", TargetType: "organisation",
-			TargetID: a.OrgID.String(), Metadata: map[string]any{"fields": []string{"name"}}})
+			TargetID: a.OrgID.String(), Metadata: map[string]any{"fields": changed}})
 	})
-	// Cached membership resolutions carry the name; they expire within a minute.
+	if err == nil {
+		s.Memberships.InvalidateOrganisation(ctx, a.OrgID)
+	}
 	return out, err
 }
 

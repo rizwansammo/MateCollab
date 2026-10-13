@@ -385,8 +385,8 @@ function OrganisationSwitcher({ org }: { org: OrganisationSummary }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={orgPath(org, '/admin/security') as Route}>
-                <Settings aria-hidden /> Security policy
+              <Link href={orgPath(org, '/admin/general') as Route}>
+                <Settings aria-hidden /> Organisation settings
               </Link>
             </DropdownMenuItem>
           </>

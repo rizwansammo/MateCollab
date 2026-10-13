@@ -1291,6 +1291,14 @@
         "responses": {
           "200": {
             "description": "The organisation.",
+            "headers": {
+              "ETag": {
+                "description": "Profile version; send it back in `If-Match` when updating.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1309,8 +1317,8 @@
       },
       "patch": {
         "operationId": "updateOrganisation",
-        "summary": "Update the organisation profile",
-        "description": "Requires `org.settings.manage`.",
+        "summary": "Update the organisation profile (Admin → General)",
+        "description": "Requires `org.settings.manage`. With `If-Match` (the `ETag` of the version being changed) a\nconcurrent change answers `412 version_mismatch` instead of being overwritten.\n",
         "tags": [
           "organisations"
         ],
@@ -1318,6 +1326,16 @@
           {
             "session": [],
             "csrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1333,6 +1351,14 @@
         "responses": {
           "200": {
             "description": "Updated.",
+            "headers": {
+              "ETag": {
+                "description": "The new profile version.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1881,6 +1907,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/orgs/{orgId}/roles": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "get": {
+        "operationId": "getRoleCatalogue",
+        "summary": "Roles and their effective permissions",
+        "description": "Any member may read it. Roles are fixed (Owner, Admin, Member, Guest); there is no custom role editing.",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The role model.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleCatalogue"
                 }
               }
             }
@@ -2867,11 +2931,28 @@
       },
       "UpdateOrganisationRequest": {
         "type": "object",
+        "description": "JSON Merge Patch of the organisation profile; omitted fields are unchanged.",
         "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string",
             "maxLength": 100
+          },
+          "default_timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "IANA time zone used for organisation-wide defaults.",
+            "examples": [
+              "Asia/Dhaka"
+            ]
+          },
+          "default_locale": {
+            "type": "string",
+            "maxLength": 35,
+            "description": "BCP 47 language tag.",
+            "examples": [
+              "en-GB"
+            ]
           }
         }
       },
@@ -3256,6 +3337,87 @@
           "scheduled_at": {
             "$ref": "#/components/schemas/Timestamp",
             "description": "When the account will be anonymised unless the request is cancelled first."
+          }
+        }
+      },
+      "RoleCatalogue": {
+        "type": "object",
+        "description": "The fixed role model with this organisation's effective permissions, derived from the server's\nauthorisation catalogue and the organisation's current settings.\n",
+        "additionalProperties": false,
+        "required": [
+          "permissions",
+          "roles",
+          "settings"
+        ],
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "description"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "examples": [
+                    "org.members.invite"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "depends_on": {
+                  "type": "string",
+                  "description": "Organisation setting that changes who holds this permission."
+                }
+              }
+            }
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "role",
+                "permissions"
+              ],
+              "properties": {
+                "role": {
+                  "$ref": "#/components/schemas/Role"
+                },
+                "permissions": {
+                  "type": "array",
+                  "description": "Permission IDs this role holds in this organisation.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "invite_permission",
+              "allow_guest_invites"
+            ],
+            "properties": {
+              "invite_permission": {
+                "type": "string",
+                "enum": [
+                  "admins",
+                  "members"
+                ]
+              },
+              "allow_guest_invites": {
+                "type": "boolean"
+              }
+            }
           }
         }
       }

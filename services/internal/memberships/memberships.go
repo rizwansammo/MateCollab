@@ -86,15 +86,24 @@ func membershipKey(org tenant.OrgID, user tenant.UserID) string {
 	return redisx.Key("org", org.String(), "member", user.String())
 }
 
+func orgEpochKey(org tenant.OrgID) string { return redisx.Key("org", org.String(), "epoch") }
+
+// InvalidateOrganisation drops every cached membership resolution of org (after a rename or a
+// status change), by moving its epoch: entries cached under an older epoch are ignored.
+func (s *Service) InvalidateOrganisation(ctx context.Context, org tenant.OrgID) {
+	_ = s.Redis.Incr(context.WithoutCancel(ctx), orgEpochKey(org)).Err()
+}
+
 // Resolve returns the user's membership in org. It is cached briefly and invalidated on every
 // change; a missing membership is reported as not found (indistinguishable from a missing
 // organisation).
 func (s *Service) Resolve(ctx context.Context, user tenant.UserID, org tenant.OrgID) (Resolved, error) {
 	key := membershipKey(org, user)
+	epoch, _ := s.Redis.Get(ctx, orgEpochKey(org)).Int64()
 	if raw, err := s.Redis.Get(ctx, key).Bytes(); err == nil {
-		var r Resolved
-		if json.Unmarshal(raw, &r) == nil {
-			return r, nil
+		var r cachedResolution
+		if json.Unmarshal(raw, &r) == nil && r.Epoch == epoch {
+			return r.Resolved, nil
 		}
 	}
 	var out Resolved
@@ -112,10 +121,15 @@ func (s *Service) Resolve(ctx context.Context, user tenant.UserID, org tenant.Or
 	if err != nil {
 		return Resolved{}, err
 	}
-	if raw, err := json.Marshal(out); err == nil {
+	if raw, err := json.Marshal(cachedResolution{Resolved: out, Epoch: epoch}); err == nil {
 		_ = s.Redis.Set(ctx, key, raw, membershipCacheTTL).Err()
 	}
 	return out, nil
+}
+
+type cachedResolution struct {
+	Resolved
+	Epoch int64 `json:"epoch"`
 }
 
 func (s *Service) invalidate(ctx context.Context, org tenant.OrgID, user tenant.UserID) {

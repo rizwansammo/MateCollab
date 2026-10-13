@@ -2,6 +2,7 @@ import {
   AtSign,
   Bell,
   Bookmark,
+  Building2,
   CalendarClock,
   CalendarDays,
   CircleCheck,
@@ -10,6 +11,7 @@ import {
   FolderOpen,
   History,
   House,
+  KeyRound,
   Layers,
   LayoutGrid,
   LifeBuoy,
@@ -154,8 +156,10 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
   admin: {
     title: 'Administration',
     links: [
+      { label: 'General', href: '/admin/general', path: '/admin/general', icon: Building2 },
       { label: 'Members', href: '/admin/members', path: '/admin/members', icon: UsersRound },
       { label: 'Invitations', href: '/admin/invitations', path: '/admin/invitations', icon: UserRoundPlus },
+      { label: 'Roles and permissions', href: '/admin/roles', path: '/admin/roles', icon: KeyRound },
       { label: 'Security policy', href: '/admin/security', path: '/admin/security', icon: ShieldCheck },
     ],
   },

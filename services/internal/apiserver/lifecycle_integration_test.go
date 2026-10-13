@@ -229,3 +229,71 @@ func TestAccountDeletion(t *testing.T) {
 		h.browser().do(http.MethodPost, "/auth/login", map[string]string{"email": "member@acme.test", "password": member.password}).expect(http.StatusUnauthorized)
 	})
 }
+
+func TestOrganisationGeneralAndRoles(t *testing.T) {
+	h := newHarness(t, nil)
+	orgA, owner := h.seedOrg("Acme", "acme", "owner@acme.test")
+	_, tok := h.invite(owner.b, orgA, "member@acme.test", "member")
+	member := h.join(tok, "member@acme.test", "Mo Member")
+	_, tok = h.invite(owner.b, orgA, "guest@acme.test", "guest")
+	guest := h.join(tok, "guest@acme.test", "Gus Guest")
+	path := "/orgs/" + orgA
+
+	h.run("profile updates with optimistic concurrency", func(t *testing.T) {
+		etag := owner.b.do(http.MethodGet, path, nil).expect(http.StatusOK).header.Get("ETag")
+		body := map[string]string{"name": "Acme Corporation", "default_timezone": "Asia/Dhaka", "default_locale": "en-gb"}
+		res := owner.b.do(http.MethodPatch, path, body, header("If-Match", etag)).expect(http.StatusOK)
+		org := res.m()
+		if org["name"] != "Acme Corporation" || org["default_timezone"] != "Asia/Dhaka" || org["default_locale"] != "en-GB" {
+			t.Fatalf("profile: %v", org)
+		}
+		owner.b.do(http.MethodPatch, path, map[string]string{"name": "Stale"}, header("If-Match", etag)).expect(http.StatusPreconditionFailed, "version_mismatch")
+		owner.b.do(http.MethodPatch, path, map[string]string{"default_timezone": "Mars/Base"}).expect(http.StatusUnprocessableEntity)
+		owner.b.do(http.MethodPatch, path, map[string]string{"default_locale": "not a locale"}).expect(http.StatusUnprocessableEntity)
+		member.b.do(http.MethodPatch, path, map[string]string{"name": "Mine"}).expect(http.StatusForbidden)
+		// The new name reaches every member's organisation list immediately.
+		if name := member.b.refresh()["organisations"].([]any)[0].(map[string]any)["name"]; name != "Acme Corporation" {
+			t.Fatalf("member sees %v", name)
+		}
+		if h.auditCount(orgA, "org.updated") != 1 {
+			t.Fatal("profile change not audited")
+		}
+	})
+
+	h.run("roles and effective permissions come from the authz catalogue", func(t *testing.T) {
+		var doc struct {
+			Permissions []struct {
+				ID string `json:"id"`
+			} `json:"permissions"`
+			Roles []struct {
+				Role        string   `json:"role"`
+				Permissions []string `json:"permissions"`
+			} `json:"roles"`
+		}
+		guest.b.do(http.MethodGet, path+"/roles", nil).expect(http.StatusOK).json(&doc)
+		has := func(role, perm string) bool {
+			for _, r := range doc.Roles {
+				if r.Role == role {
+					for _, p := range r.Permissions {
+						if p == perm {
+							return true
+						}
+					}
+				}
+			}
+			return false
+		}
+		if len(doc.Permissions) < 10 || !has("owner", "org.ownership.transfer") || has("admin", "org.ownership.transfer") ||
+			!has("member", "org.directory.view") || has("guest", "org.directory.view") || has("member", "org.members.invite") {
+			t.Fatalf("catalogue: %+v", doc)
+		}
+		settings := owner.b.do(http.MethodGet, path+"/settings/security", nil).expect(http.StatusOK)
+		owner.b.do(http.MethodPut, path+"/settings/security",
+			map[string]any{"require_2fa": false, "session_max_age": "30d", "allow_guest_invites": true, "invite_permission": "members"},
+			header("If-Match", settings.header.Get("ETag"))).expect(http.StatusOK)
+		member.b.do(http.MethodGet, path+"/roles", nil).expect(http.StatusOK).json(&doc)
+		if !has("member", "org.members.invite") {
+			t.Fatal("effective permissions ignore the organisation's settings")
+		}
+	})
+}

@@ -1,15 +1,19 @@
 parameters:
-- $ref: ../components/parameters/OrgId.yaml
+  - $ref: ../components/parameters/OrgId.yaml
 get:
   operationId: getOrganisation
   summary: Get the organisation profile
-  tags:
-  - organisations
+  tags: [organisations]
   security:
-  - session: []
+    - session: []
   responses:
     '200':
       description: The organisation.
+      headers:
+        ETag:
+          description: Profile version; send it back in `If-Match` when updating.
+          schema:
+            type: string
       content:
         application/json:
           schema:
@@ -20,13 +24,20 @@ get:
       $ref: ../components/responses/Problem.yaml
 patch:
   operationId: updateOrganisation
-  summary: Update the organisation profile
-  description: Requires `org.settings.manage`.
-  tags:
-  - organisations
+  summary: Update the organisation profile (Admin → General)
+  description: |
+    Requires `org.settings.manage`. With `If-Match` (the `ETag` of the version being changed) a
+    concurrent change answers `412 version_mismatch` instead of being overwritten.
+  tags: [organisations]
   security:
-  - session: []
-    csrf: []
+    - session: []
+      csrf: []
+  parameters:
+    - name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
   requestBody:
     required: true
     content:
@@ -36,6 +47,11 @@ patch:
   responses:
     '200':
       description: Updated.
+      headers:
+        ETag:
+          description: The new profile version.
+          schema:
+            type: string
       content:
         application/json:
           schema:

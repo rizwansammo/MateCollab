@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
+	"github.com/rizwansammo/MateCollab/services/internal/authz"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/apperr"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/tenant"
@@ -30,6 +31,7 @@ func (h *Handler) SessionRoutes(r chi.Router) {
 func (h *Handler) OrgRoutes(r chi.Router) {
 	r.Get("/", h.get)
 	r.Patch("/", h.update)
+	r.Get("/roles", h.roles)
 	r.Get("/settings/security", h.getSecurity)
 	r.Put("/settings/security", h.putSecurity)
 }
@@ -74,29 +76,89 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, toJSON(o))
 }
 
+// profileETag identifies a version of the organisation profile (its last change, µs).
+func profileETag(o Organisation) string {
+	return `"` + strconv.FormatInt(o.UpdatedAt.UnixMicro(), 10) + `"`
+}
+
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 	o, err := h.svc.Get(r.Context(), actor(r))
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	w.Header().Set("ETag", profileETag(o))
 	httpx.WriteJSON(w, http.StatusOK, toJSON(o))
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name *string `json:"name"`
+		Name            *string `json:"name"`
+		DefaultTimezone *string `json:"default_timezone"`
+		DefaultLocale   *string `json:"default_locale"`
+	}
+	// If-Match is optional here (older clients rename without it); when sent it must match.
+	var ifMatch *time.Time
+	if v := strings.Trim(strings.TrimPrefix(r.Header.Get("If-Match"), "W/"), `"`); v != "" {
+		us, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			httpx.WriteProblem(w, r, errVersionMismatch)
+			return
+		}
+		t := time.UnixMicro(us)
+		ifMatch = &t
 	}
 	if err := httpx.DecodeJSON(w, r, &req, 8<<10); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
-	o, err := h.svc.Update(r.Context(), actor(r), req.Name, httpx.ClientMetaFrom(r))
+	o, err := h.svc.Update(r.Context(), actor(r), ProfileUpdate{Name: req.Name, DefaultTimezone: req.DefaultTimezone, DefaultLocale: req.DefaultLocale}, ifMatch, httpx.ClientMetaFrom(r))
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
+	w.Header().Set("ETag", profileETag(o))
 	httpx.WriteJSON(w, http.StatusOK, toJSON(o))
+}
+
+// roles describes the fixed role model with this organisation's effective permissions, straight
+// from the authz catalogue (the UI keeps no copy of the rules).
+func (h *Handler) roles(w http.ResponseWriter, r *http.Request) {
+	a := actor(r)
+	if err := authz.Check(a, authz.SettingsFrom(r.Context()), authz.OrgView); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	settings := authz.SettingsFrom(r.Context())
+	type permissionJSON struct {
+		ID          authz.Permission `json:"id"`
+		Description string           `json:"description"`
+		DependsOn   string           `json:"depends_on,omitempty"`
+	}
+	type roleJSON struct {
+		Role        tenant.Role        `json:"role"`
+		Permissions []authz.Permission `json:"permissions"`
+	}
+	catalogue := authz.Catalogue()
+	perms := make([]permissionJSON, len(catalogue))
+	for i, p := range catalogue {
+		perms[i] = permissionJSON{ID: p.ID, Description: p.Description, DependsOn: p.DependsOn}
+	}
+	var roles []roleJSON
+	for _, role := range []tenant.Role{tenant.RoleOwner, tenant.RoleAdmin, tenant.RoleMember, tenant.RoleGuest} {
+		granted := []authz.Permission{}
+		for _, p := range catalogue {
+			if authz.Allowed(role, settings, p.ID) {
+				granted = append(granted, p.ID)
+			}
+		}
+		roles = append(roles, roleJSON{Role: role, Permissions: granted})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"permissions": perms,
+		"roles":       roles,
+		"settings":    map[string]any{"invite_permission": settings.InvitePermission, "allow_guest_invites": settings.AllowGuestInvites},
+	})
 }
 
 type securityJSON struct {
