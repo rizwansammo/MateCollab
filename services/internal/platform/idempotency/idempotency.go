@@ -21,6 +21,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/rizwansammo/MateCollab/services/internal/platform/apperr"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/db"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/httpx"
 	"github.com/rizwansammo/MateCollab/services/internal/platform/tenant"
 )
@@ -37,7 +38,7 @@ var (
 	errInvalid  = apperr.Validation(apperr.Field(Header, "invalid", "Use 1–128 printable characters, for example a UUID."))
 )
 
-// Store records keys in PostgreSQL.
+// Store records keys in PostgreSQL, under the caller's user context (row-level security).
 type Store struct {
 	Pool *pgxpool.Pool
 	// User identifies the caller (the session's user); requests without one are not deduplicated.
@@ -104,19 +105,21 @@ func (s *Store) claim(ctx context.Context, user uuid.UUID, key string, r *http.R
 		org = &id
 	}
 	now := s.Now()
-	// An expired key is forgotten so the key can start a new request.
-	if _, err := s.Pool.Exec(ctx, `DELETE FROM idempotency_keys WHERE user_id = $1 AND key = $2 AND expires_at <= $3`, user, key, now); err != nil {
-		return false, err
-	}
-	tag, err := s.Pool.Exec(ctx, `
-		INSERT INTO idempotency_keys (user_id, key, org_id, method, path, request_hash, state, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, 'in_progress', $7)
-		ON CONFLICT (user_id, key) DO NOTHING`,
-		user, key, org, r.Method, r.URL.Path, sum, now.Add(TTL))
-	if err != nil {
-		return false, err
-	}
-	return tag.RowsAffected() == 1, nil
+	claimed := false
+	err := db.InUserTx(ctx, s.Pool, tenant.UserID(user), func(tx *db.Tx) error {
+		// An expired key is forgotten so the key can start a new request.
+		if _, err := tx.Exec(ctx, `DELETE FROM idempotency_keys WHERE user_id = $1 AND key = $2 AND expires_at <= $3`, user, key, now); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO idempotency_keys (user_id, key, org_id, method, path, request_hash, state, expires_at)
+			VALUES ($1, $2, $3, $4, $5, $6, 'in_progress', $7)
+			ON CONFLICT (user_id, key) DO NOTHING`,
+			user, key, org, r.Method, r.URL.Path, sum, now.Add(TTL))
+		claimed = tag.RowsAffected() == 1
+		return err
+	})
+	return claimed, err
 }
 
 func (s *Store) replay(w http.ResponseWriter, r *http.Request, user uuid.UUID, key string, sum []byte) {
@@ -126,9 +129,11 @@ func (s *Store) replay(w http.ResponseWriter, r *http.Request, user uuid.UUID, k
 		status *int32
 		body   []byte
 	)
-	err := s.Pool.QueryRow(r.Context(), `
-		SELECT request_hash, state, response_status, response_body FROM idempotency_keys
-		WHERE user_id = $1 AND key = $2`, user, key).Scan(&stored, &state, &status, &body)
+	err := db.InUserTx(r.Context(), s.Pool, tenant.UserID(user), func(tx *db.Tx) error {
+		return tx.QueryRow(r.Context(), `
+			SELECT request_hash, state, response_status, response_body FROM idempotency_keys
+			WHERE user_id = $1 AND key = $2`, user, key).Scan(&stored, &state, &status, &body)
+	})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		httpx.WriteProblem(w, r, errConflict) // expired and removed concurrently: let the client retry
@@ -159,17 +164,20 @@ func (s *Store) replay(w http.ResponseWriter, r *http.Request, user uuid.UUID, k
 
 // finish stores the response, or forgets the key after a server error so a retry can run again.
 func (s *Store) finish(ctx context.Context, user uuid.UUID, key string, rec *recorder) {
-	if rec.status >= 500 {
-		_, _ = s.Pool.Exec(ctx, `DELETE FROM idempotency_keys WHERE user_id = $1 AND key = $2`, user, key)
-		return
-	}
-	var body any
-	if b := bytes.TrimSpace(rec.body.Bytes()); len(b) > 0 && json.Valid(b) {
-		body = json.RawMessage(b)
-	}
-	_, _ = s.Pool.Exec(ctx, `
-		UPDATE idempotency_keys SET state = 'completed', response_status = $3, response_body = $4
-		WHERE user_id = $1 AND key = $2`, user, key, rec.status, body)
+	_ = db.InUserTx(ctx, s.Pool, tenant.UserID(user), func(tx *db.Tx) error {
+		if rec.status >= 500 {
+			_, err := tx.Exec(ctx, `DELETE FROM idempotency_keys WHERE user_id = $1 AND key = $2`, user, key)
+			return err
+		}
+		var body any
+		if b := bytes.TrimSpace(rec.body.Bytes()); len(b) > 0 && json.Valid(b) {
+			body = json.RawMessage(b)
+		}
+		_, err := tx.Exec(ctx, `
+			UPDATE idempotency_keys SET state = 'completed', response_status = $3, response_body = $4
+			WHERE user_id = $1 AND key = $2`, user, key, rec.status, body)
+		return err
+	})
 }
 
 type recorder struct {
@@ -215,6 +223,7 @@ type CleanupWorker struct {
 
 // Work deletes expired keys.
 func (w *CleanupWorker) Work(ctx context.Context, _ *river.Job[CleanupArgs]) error {
-	_, err := w.Pool.Exec(ctx, `DELETE FROM idempotency_keys WHERE expires_at < now()`)
+	// Owner-run function: the job has no user context and the table is per-user under RLS.
+	_, err := w.Pool.Exec(ctx, `SELECT mc_purge_idempotency_keys(now())`)
 	return err
 }

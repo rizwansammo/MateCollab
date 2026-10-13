@@ -19,6 +19,26 @@ CREATE TABLE idempotency_keys (
 );
 CREATE INDEX idempotency_keys_expiry ON idempotency_keys (expires_at);
 
+-- Each user sees only their own keys (the API sets mc.user_id); org_id is informational.
+ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_keys FORCE ROW LEVEL SECURITY;
+CREATE POLICY user_isolation ON idempotency_keys
+  USING (user_id = mc_current_user_id()) WITH CHECK (user_id = mc_current_user_id());
+
+-- Expired keys of all users are removed by the hourly cleanup job, which has no user context.
+-- +goose StatementBegin
+CREATE FUNCTION mc_purge_idempotency_keys(p_now timestamptz)
+RETURNS bigint
+LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$
+  WITH gone AS (DELETE FROM idempotency_keys WHERE expires_at < p_now RETURNING 1)
+  SELECT count(*) FROM gone
+$$;
+-- +goose StatementEnd
+REVOKE ALL ON FUNCTION mc_purge_idempotency_keys(timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION mc_purge_idempotency_keys(timestamptz) TO mc_app;
+
 -- +goose Down
 
+DROP FUNCTION mc_purge_idempotency_keys(timestamptz);
 DROP TABLE idempotency_keys;

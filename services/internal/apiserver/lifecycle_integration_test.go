@@ -13,6 +13,7 @@ import (
 
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
 	"github.com/rizwansammo/MateCollab/services/internal/orgs"
+	"github.com/rizwansammo/MateCollab/services/internal/platform/idempotency"
 	"github.com/rizwansammo/MateCollab/services/internal/testkit"
 	"github.com/rizwansammo/MateCollab/services/internal/users"
 )
@@ -351,4 +352,15 @@ func TestInvitationIdempotency(t *testing.T) {
 	owner.b.login(owner.email, owner.password) // the session expired on the test clock
 	owner.b.do(http.MethodPost, path, map[string]string{"email": "later@acme.test", "role": "member"}, key("k-1")).expect(http.StatusCreated)
 	h.clock.Advance(-25 * time.Hour)
+	// The hourly cleanup (no user context) removes expired keys of every user.
+	if _, err := h.db.Owner.Exec(ctx, `UPDATE idempotency_keys SET expires_at = now() - interval '1 minute'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&idempotency.CleanupWorker{Pool: h.db.App}).Work(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	var left int
+	if err := h.db.Owner.QueryRow(ctx, `SELECT count(*) FROM idempotency_keys`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("expired keys left: %d %v", left, err)
+	}
 }
