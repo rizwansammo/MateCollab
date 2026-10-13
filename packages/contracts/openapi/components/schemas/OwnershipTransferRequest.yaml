@@ -1,0 +1,7 @@
+type: object
+additionalProperties: false
+required: [user_id]
+properties:
+  user_id:
+    $ref: ./Id.yaml
+    description: An active Admin of the organisation.

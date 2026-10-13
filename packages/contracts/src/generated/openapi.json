@@ -1745,6 +1745,48 @@
           }
         }
       }
+    },
+    "/orgs/{orgId}/ownership-transfer": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrgId"
+        }
+      ],
+      "post": {
+        "operationId": "transferOwnership",
+        "summary": "Transfer ownership to an Admin",
+        "description": "Owner only, after a recent password check (`403 reauthentication_required`). The target must\nbe an active Admin whose account is not scheduled for deletion (`409 transfer_target_not_admin`,\n`409 transfer_target_inactive`, `409 transfer_to_self`). In one transaction the target becomes\nthe Owner and the previous Owner becomes an Admin; an audit event is recorded.\n",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "session": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipTransferRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Ownership transferred."
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3057,6 +3099,19 @@
           "signed_in": {
             "type": "boolean",
             "description": "True when the browser now has a session (always, after creating an account)."
+          }
+        }
+      },
+      "OwnershipTransferRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user_id"
+        ],
+        "properties": {
+          "user_id": {
+            "$ref": "#/components/schemas/Id",
+            "description": "An active Admin of the organisation."
           }
         }
       }

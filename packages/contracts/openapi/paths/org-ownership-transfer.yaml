@@ -1,0 +1,27 @@
+parameters:
+  - $ref: ../components/parameters/OrgId.yaml
+post:
+  operationId: transferOwnership
+  summary: Transfer ownership to an Admin
+  description: |
+    Owner only, after a recent password check (`403 reauthentication_required`). The target must
+    be an active Admin whose account is not scheduled for deletion (`409 transfer_target_not_admin`,
+    `409 transfer_target_inactive`, `409 transfer_to_self`). In one transaction the target becomes
+    the Owner and the previous Owner becomes an Admin; an audit event is recorded.
+  tags: [members]
+  security:
+    - session: []
+      csrf: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/OwnershipTransferRequest.yaml
+  responses:
+    '204':
+      description: Ownership transferred.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

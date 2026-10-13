@@ -42,6 +42,7 @@ func (h *Handler) OrgRoutes(r chi.Router) {
 	r.Post("/invitations", h.createInvitation)
 	r.Delete("/invitations/{invitationId}", h.revokeInvitation)
 	r.Post("/invitations/{invitationId}/resend", h.resendInvitation)
+	r.Post("/ownership-transfer", h.transferOwnership)
 }
 
 // ---- JSON ---------------------------------------------------------------------------------------
@@ -352,4 +353,26 @@ func (h *Handler) accept(w http.ResponseWriter, r *http.Request) {
 		"organisation": map[string]any{"id": res.OrgID, "slug": res.OrgSlug, "name": res.OrgName},
 		"signed_in":    res.Session != nil || principal != nil,
 	})
+}
+
+// ---- ownership --------------------------------------------------------------------------------
+
+func (h *Handler) transferOwnership(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		UserID uuid.UUID `json:"user_id"`
+	}
+	if err := httpx.DecodeJSON(w, r, &req, 8<<10); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	if req.UserID == uuid.Nil {
+		httpx.WriteProblem(w, r, apperr.Validation(apperr.Field("user_id", "required", "Choose the Admin who will become the Owner.")))
+		return
+	}
+	p, _ := auth.PrincipalFrom(r.Context())
+	if err := h.svc.TransferOwnership(r.Context(), actor(r), p, req.UserID, httpx.ClientMetaFrom(r)); err != nil {
+		httpx.WriteProblem(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

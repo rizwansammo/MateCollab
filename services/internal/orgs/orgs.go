@@ -199,11 +199,7 @@ func (s *Service) CreateWithOwner(ctx context.Context, name, slug string, owner 
 	if err := ValidateSlug(slug); err != nil {
 		return Created{}, err
 	}
-	email := strings.TrimSpace(owner.Email)
-	if at := strings.LastIndex(email, "@"); len(email) < 3 || len(email) > 254 || at <= 0 || at == len(email)-1 || strings.ContainsAny(email, " \r\n\t<>") {
-		return Created{}, apperr.Validation(apperr.Field("owner_email", "invalid", "Enter a valid email address."))
-	}
-	existing, found, err := s.Auth.LookupAccount(ctx, email)
+	email, existing, found, err := s.lookupOwner(ctx, owner)
 	if err != nil {
 		return Created{}, err
 	}
@@ -218,22 +214,11 @@ func (s *Service) CreateWithOwner(ctx context.Context, name, slug string, owner 
 			return err
 		}
 		if !found {
-			user, emailID, err := s.Users.Create(ctx, tx, org, users.NewUser{DisplayName: owner.DisplayName, Email: email})
-			if err != nil {
+			if res.OwnerID, res.SetupLink, err = s.createOwnerAccount(ctx, tx, org, email, owner.DisplayName, clean); err != nil {
 				return err
 			}
-			res.OwnerID = user
-			if err := s.Memberships.AddOwner(ctx, tx, org, user, email); err != nil {
-				return err
-			}
-			name, _, err := s.Users.Profile(ctx, tx, user)
-			if err != nil {
-				return err
-			}
-			if res.SetupLink, err = s.Auth.IssueAccountSetup(ctx, tx, user, emailID, email, name, clean); err != nil {
-				return err
-			}
-		} else if err := s.Memberships.AddOwner(ctx, tx, org, existing, email); err != nil {
+		}
+		if err := s.Memberships.AddOwner(ctx, tx, org, res.OwnerID, email); err != nil {
 			return err
 		}
 		if err := audit.Record(ctx, tx, org, tenant.UserID{}, uuid.Nil, httpx.ClientMeta{}, audit.Entry{
@@ -249,6 +234,88 @@ func (s *Service) CreateWithOwner(ctx context.Context, name, slug string, owner 
 		return Created{}, err
 	}
 	return res, nil
+}
+
+// Assigned reports the outcome of AssignOwner.
+type Assigned struct {
+	Organisation  Organisation
+	OwnerID       tenant.UserID
+	PreviousOwner tenant.UserID // zero when the organisation had no Owner
+	NewAccount    bool
+	SetupLink     string
+}
+
+// AssignOwner makes an account the Owner of an existing organisation from operator tooling
+// (mcctl user create-owner): bootstrap after an import, or recovery when the Owner has lost
+// access. A new account gets a set-your-password link, never a password. The previous Owner
+// stays as an Admin. Use the in-app ownership transfer whenever the Owner can sign in.
+func (s *Service) AssignOwner(ctx context.Context, slug string, owner OwnerSpec) (Assigned, error) {
+	email, existing, found, err := s.lookupOwner(ctx, owner)
+	if err != nil {
+		return Assigned{}, err
+	}
+	// A narrow definer lookup: operator tooling has no tenant context to read organisations.
+	var id *uuid.UUID
+	if err := s.Pool.QueryRow(ctx, "SELECT mc_org_id_by_slug($1)", strings.TrimSpace(slug)).Scan(&id); err != nil {
+		return Assigned{}, err
+	}
+	if id == nil {
+		return Assigned{}, apperr.Validation(apperr.Field("org", "not_found", "No organisation has this address."))
+	}
+	org := tenant.OrgID(*id)
+	res := Assigned{OwnerID: existing, NewAccount: !found}
+	err = db.InTenantTx(ctx, s.Pool, tenant.Scope{OrgID: org, UserID: existing}, func(tx *db.Tx) error {
+		current, err := s.get(ctx, tx, org)
+		if err != nil {
+			return err
+		}
+		if !found {
+			if res.OwnerID, res.SetupLink, err = s.createOwnerAccount(ctx, tx, org, email, owner.DisplayName, current.Name); err != nil {
+				return err
+			}
+		}
+		if res.PreviousOwner, err = s.Memberships.AssignOwner(ctx, tx, org, res.OwnerID, email); err != nil {
+			return err
+		}
+		if res.PreviousOwner != res.OwnerID {
+			if err := audit.Record(ctx, tx, org, tenant.UserID{}, uuid.Nil, httpx.ClientMeta{}, audit.Entry{
+				Action: "org.ownership_transferred", TargetType: "member", TargetID: res.OwnerID.String(),
+				Metadata: map[string]any{"via": "mcctl", "from_user_id": res.PreviousOwner.String(), "to_user_id": res.OwnerID.String()},
+			}); err != nil {
+				return err
+			}
+		}
+		res.Organisation = current
+		return nil
+	})
+	if err != nil {
+		return Assigned{}, err
+	}
+	return res, nil
+}
+
+func (s *Service) lookupOwner(ctx context.Context, owner OwnerSpec) (string, tenant.UserID, bool, error) {
+	email := strings.TrimSpace(owner.Email)
+	if at := strings.LastIndex(email, "@"); len(email) < 3 || len(email) > 254 || at <= 0 || at == len(email)-1 || strings.ContainsAny(email, " \r\n\t<>") {
+		return "", tenant.UserID{}, false, apperr.Validation(apperr.Field("owner_email", "invalid", "Enter a valid email address."))
+	}
+	existing, found, err := s.Auth.LookupAccount(ctx, email)
+	return email, existing, found, err
+}
+
+// createOwnerAccount creates the account (tx switches to its user context) and issues the
+// emailed set-your-password link, which also verifies the address.
+func (s *Service) createOwnerAccount(ctx context.Context, tx *db.Tx, org tenant.OrgID, email, displayName, orgName string) (tenant.UserID, string, error) {
+	user, emailID, err := s.Users.Create(ctx, tx, org, users.NewUser{DisplayName: displayName, Email: email})
+	if err != nil {
+		return user, "", err
+	}
+	name, _, err := s.Users.Profile(ctx, tx, user)
+	if err != nil {
+		return user, "", err
+	}
+	link, err := s.Auth.IssueAccountSetup(ctx, tx, user, emailID, email, name, orgName)
+	return user, link, err
 }
 
 // ---- profile ----------------------------------------------------------------------------------

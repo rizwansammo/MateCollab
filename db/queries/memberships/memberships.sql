@@ -58,3 +58,22 @@ WHERE org_id = @org_id AND user_id = @user_id;
 
 -- name: EmailIsMember :one
 SELECT mc_org_email_is_member(@org_id::uuid, @email::text)::boolean AS is_member;
+
+-- name: LockMembersForTransfer :many
+-- Locks both memberships of an ownership change in a fixed order (no deadlocks between
+-- concurrent transfers) and reports each account's lifecycle state.
+SELECT m.user_id, m.role, m.status, u.status AS user_status, u.deletion_requested_at
+FROM organisation_memberships m
+JOIN users u ON u.id = m.user_id
+WHERE m.org_id = @org_id AND m.user_id = ANY(@user_ids::uuid[])
+ORDER BY m.user_id
+FOR UPDATE OF m;
+
+-- name: GetOwnerForUpdate :one
+SELECT user_id FROM organisation_memberships
+WHERE org_id = @org_id AND role = 'owner'
+FOR UPDATE;
+
+-- name: UpdateOwnMembershipProfile :exec
+UPDATE organisation_memberships SET title = @title, contact_email = @contact_email
+WHERE org_id = @org_id AND user_id = @user_id;

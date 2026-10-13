@@ -46,6 +46,10 @@ Usage:
   mcctl org create --name NAME --slug SLUG --owner-email ADDR [--owner-name NAME] [--print-setup-link]
                               create an organisation; a new owner account is emailed a
                               set-your-password link
+  mcctl user create-owner --org SLUG --email ADDR [--name NAME] [--print-setup-link]
+                              make an account the Owner of an existing organisation (bootstrap
+                              or recovery); a new account is emailed a set-your-password link
+                              and the previous Owner stays as an Admin
   mcctl keys generate         print a new encryption keyring entry
   mcctl config check          validate configuration for every binary
   mcctl doctor                check connectivity to every local dependency
@@ -94,6 +98,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return mailTest(ctx, cfg, args[2:], out)
 	case "org create":
 		return orgCreate(ctx, cfg, logger, args[2:], out)
+	case "user create-owner":
+		return userCreateOwner(ctx, cfg, logger, args[2:], out)
 	case "config check":
 		return configCheck(cfg, out)
 	case "doctor":
@@ -201,6 +207,49 @@ func mailTest(ctx context.Context, cfg *config.Config, args []string, out io.Wri
 	return nil
 }
 
+// operatorServices connects to the runtime database and Valkey with the API's module graph.
+func operatorServices(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*apiserver.Services, func(), error) {
+	if err := cfg.Require(config.PartHTTP, config.PartDatabase, config.PartRedis, config.PartCrypto); err != nil {
+		return nil, nil, err
+	}
+	pool, err := db.NewPool(ctx, cfg.Database.URL, db.PoolOptions{ApplicationName: "mc-mcctl", MaxConns: 2})
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := db.CheckSchema(ctx, pool, cfg.Database.MigrationsDir); err != nil {
+		pool.Close()
+		return nil, nil, err
+	}
+	rdb, err := redisx.New(cfg.Redis.URL)
+	if err != nil {
+		pool.Close()
+		return nil, nil, err
+	}
+	closeAll := func() {
+		_ = rdb.Close()
+		pool.Close()
+	}
+	queue, err := jobs.NewInsertOnlyClient(pool, logger)
+	if err != nil {
+		closeAll()
+		return nil, nil, err
+	}
+	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Logger: logger})
+	if err != nil {
+		closeAll()
+		return nil, nil, err
+	}
+	return svc, closeAll, nil
+}
+
+func printFieldErrors(out io.Writer, err error) {
+	if e, ok := apperr.As(err); ok {
+		for _, f := range e.Fields {
+			fmt.Fprintf(out, "  %s: %s\n", f.Field, f.Message)
+		}
+	}
+}
+
 func orgCreate(ctx context.Context, cfg *config.Config, logger *slog.Logger, args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("org create", flag.ContinueOnError)
 	name := fs.String("name", "", "organisation name")
@@ -214,54 +263,72 @@ func orgCreate(ctx context.Context, cfg *config.Config, logger *slog.Logger, arg
 	if *name == "" || *slug == "" || *ownerEmail == "" {
 		return errors.New("--name, --slug and --owner-email are required")
 	}
-	if err := cfg.Require(config.PartHTTP, config.PartDatabase, config.PartRedis, config.PartCrypto); err != nil {
-		return err
-	}
-	pool, err := db.NewPool(ctx, cfg.Database.URL, db.PoolOptions{ApplicationName: "mc-mcctl", MaxConns: 2})
+	svc, closeAll, err := operatorServices(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
-	if err := db.CheckSchema(ctx, pool, cfg.Database.MigrationsDir); err != nil {
-		return err
-	}
-	rdb, err := redisx.New(cfg.Redis.URL)
+	defer closeAll()
+	res, err := svc.Orgs.CreateWithOwner(ctx, *name, strings.ToLower(*slug), orgs.OwnerSpec{Email: *ownerEmail, DisplayName: defaultName(*ownerName, *ownerEmail)})
 	if err != nil {
-		return err
-	}
-	defer rdb.Close()
-	queue, err := jobs.NewInsertOnlyClient(pool, logger)
-	if err != nil {
-		return err
-	}
-	svc, err := apiserver.NewServices(apiserver.Deps{Config: cfg, Pool: pool, Redis: rdb, Jobs: queue, Logger: logger})
-	if err != nil {
-		return err
-	}
-	displayName := *ownerName
-	if displayName == "" {
-		displayName = strings.Split(*ownerEmail, "@")[0]
-	}
-	res, err := svc.Orgs.CreateWithOwner(ctx, *name, strings.ToLower(*slug), orgs.OwnerSpec{Email: *ownerEmail, DisplayName: displayName})
-	if err != nil {
-		if e, ok := apperr.As(err); ok && len(e.Fields) > 0 {
-			for _, f := range e.Fields {
-				fmt.Fprintf(out, "  %s: %s\n", f.Field, f.Message)
-			}
-		}
+		printFieldErrors(out, err)
 		return err
 	}
 	fmt.Fprintf(out, "organisation %q created\n  id:   %s\n  url:  %s/%s/home\n", res.Organisation.Name, res.Organisation.ID,
 		strings.TrimRight(cfg.PublicURL.String(), "/"), res.Organisation.Slug)
-	if res.NewAccount {
-		fmt.Fprintf(out, "owner account created for %s; a set-your-password email was queued.\n", *ownerEmail)
-		if *printLink {
-			fmt.Fprintf(out, "  setup link (single use, 72 hours; treat it like a password): %s\n", res.SetupLink)
-		}
-	} else {
-		fmt.Fprintf(out, "existing account %s is the Owner.\n", *ownerEmail)
-	}
+	reportOwner(out, *ownerEmail, res.NewAccount, res.SetupLink, *printLink)
 	return nil
+}
+
+func userCreateOwner(ctx context.Context, cfg *config.Config, logger *slog.Logger, args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("user create-owner", flag.ContinueOnError)
+	org := fs.String("org", "", "organisation URL name (slug)")
+	email := fs.String("email", "", "email address of the new Owner")
+	name := fs.String("name", "", "display name, used when the account is created")
+	printLink := fs.Bool("print-setup-link", false, "also print the single-use setup link (when email delivery is unavailable)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *org == "" || *email == "" {
+		return errors.New("--org and --email are required")
+	}
+	svc, closeAll, err := operatorServices(ctx, cfg, logger)
+	if err != nil {
+		return err
+	}
+	defer closeAll()
+	res, err := svc.Orgs.AssignOwner(ctx, *org, orgs.OwnerSpec{Email: *email, DisplayName: defaultName(*name, *email)})
+	if err != nil {
+		printFieldErrors(out, err)
+		return err
+	}
+	switch {
+	case res.PreviousOwner == res.OwnerID:
+		fmt.Fprintf(out, "%s already owns %q; nothing changed.\n", *email, res.Organisation.Name)
+	case res.PreviousOwner.IsZero():
+		fmt.Fprintf(out, "%s is now the Owner of %q.\n", *email, res.Organisation.Name)
+	default:
+		fmt.Fprintf(out, "%s is now the Owner of %q; the previous Owner is an Admin.\n", *email, res.Organisation.Name)
+	}
+	reportOwner(out, *email, res.NewAccount, res.SetupLink, *printLink)
+	return nil
+}
+
+func defaultName(name, email string) string {
+	if name != "" {
+		return name
+	}
+	return strings.Split(email, "@")[0]
+}
+
+func reportOwner(out io.Writer, email string, created bool, link string, printLink bool) {
+	if !created {
+		fmt.Fprintf(out, "existing account %s is the Owner.\n", email)
+		return
+	}
+	fmt.Fprintf(out, "owner account created for %s; a set-your-password email was queued.\n", email)
+	if printLink {
+		fmt.Fprintf(out, "  setup link (single use, 72 hours; treat it like a password): %s\n", link)
+	}
 }
 
 func keysGenerate(args []string, out io.Writer) error {

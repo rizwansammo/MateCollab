@@ -91,6 +91,19 @@ func (q *Queries) GetMemberForUpdate(ctx context.Context, arg GetMemberForUpdate
 	return i, err
 }
 
+const getOwnerForUpdate = `-- name: GetOwnerForUpdate :one
+SELECT user_id FROM organisation_memberships
+WHERE org_id = $1 AND role = 'owner'
+FOR UPDATE
+`
+
+func (q *Queries) GetOwnerForUpdate(ctx context.Context, orgID uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getOwnerForUpdate, orgID)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const insertMembership = `-- name: InsertMembership :exec
 
 INSERT INTO organisation_memberships (org_id, user_id, role, invited_by, contact_email)
@@ -240,6 +253,56 @@ func (q *Queries) ListMyOrganisations(ctx context.Context, userID uuid.UUID) ([]
 	return items, nil
 }
 
+const lockMembersForTransfer = `-- name: LockMembersForTransfer :many
+SELECT m.user_id, m.role, m.status, u.status AS user_status, u.deletion_requested_at
+FROM organisation_memberships m
+JOIN users u ON u.id = m.user_id
+WHERE m.org_id = $1 AND m.user_id = ANY($2::uuid[])
+ORDER BY m.user_id
+FOR UPDATE OF m
+`
+
+type LockMembersForTransferParams struct {
+	OrgID   uuid.UUID
+	UserIds []uuid.UUID
+}
+
+type LockMembersForTransferRow struct {
+	UserID              uuid.UUID
+	Role                string
+	Status              string
+	UserStatus          string
+	DeletionRequestedAt *time.Time
+}
+
+// Locks both memberships of an ownership change in a fixed order (no deadlocks between
+// concurrent transfers) and reports each account's lifecycle state.
+func (q *Queries) LockMembersForTransfer(ctx context.Context, arg LockMembersForTransferParams) ([]LockMembersForTransferRow, error) {
+	rows, err := q.db.Query(ctx, lockMembersForTransfer, arg.OrgID, arg.UserIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LockMembersForTransferRow{}
+	for rows.Next() {
+		var i LockMembersForTransferRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Role,
+			&i.Status,
+			&i.UserStatus,
+			&i.DeletionRequestedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveMembership = `-- name: ResolveMembership :one
 SELECT m.org_id, m.user_id, m.role, m.status, o.slug, o.name, o.status AS org_status
 FROM organisation_memberships m
@@ -308,5 +371,27 @@ type UpdateMemberStatusParams struct {
 
 func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) error {
 	_, err := q.db.Exec(ctx, updateMemberStatus, arg.Status, arg.OrgID, arg.UserID)
+	return err
+}
+
+const updateOwnMembershipProfile = `-- name: UpdateOwnMembershipProfile :exec
+UPDATE organisation_memberships SET title = $1, contact_email = $2
+WHERE org_id = $3 AND user_id = $4
+`
+
+type UpdateOwnMembershipProfileParams struct {
+	Title        *string
+	ContactEmail *string
+	OrgID        uuid.UUID
+	UserID       uuid.UUID
+}
+
+func (q *Queries) UpdateOwnMembershipProfile(ctx context.Context, arg UpdateOwnMembershipProfileParams) error {
+	_, err := q.db.Exec(ctx, updateOwnMembershipProfile,
+		arg.Title,
+		arg.ContactEmail,
+		arg.OrgID,
+		arg.UserID,
+	)
 	return err
 }

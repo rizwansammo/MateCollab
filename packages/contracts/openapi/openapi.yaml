@@ -102,6 +102,8 @@ paths:
     $ref: ./paths/org-invitation.yaml
   /orgs/{orgId}/invitations/{invitationId}/resend:
     $ref: ./paths/org-invitation-resend.yaml
+  /orgs/{orgId}/ownership-transfer:
+    $ref: ./paths/org-ownership-transfer.yaml
 components:
   securitySchemes:
     session:
@@ -236,6 +238,8 @@ components:
       $ref: ./components/schemas/AcceptInvitationRequest.yaml
     AcceptInvitationResponse:
       $ref: ./components/schemas/AcceptInvitationResponse.yaml
+    OwnershipTransferRequest:
+      $ref: ./components/schemas/OwnershipTransferRequest.yaml
   responses:
     Problem:
       $ref: ./components/responses/Problem.yaml

@@ -640,6 +640,32 @@ export interface paths {
         patch: operations["updateMember"];
         trace?: never;
     };
+    "/orgs/{orgId}/ownership-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transfer ownership to an Admin
+         * @description Owner only, after a recent password check (`403 reauthentication_required`). The target must
+         *     be an active Admin whose account is not scheduled for deletion (`409 transfer_target_not_admin`,
+         *     `409 transfer_target_inactive`, `409 transfer_to_self`). In one transaction the target becomes
+         *     the Owner and the previous Owner becomes an Admin; an audit event is recorded.
+         */
+        post: operations["transferOwnership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orgs/{orgId}/settings/security": {
         parameters: {
             query?: never;
@@ -846,6 +872,10 @@ export interface components {
             role: components["schemas"]["Role"];
             slug: string;
             status: components["schemas"]["OrganisationStatus"];
+        };
+        OwnershipTransferRequest: {
+            /** @description An active Admin of the organisation. */
+            user_id: components["schemas"]["Id"];
         };
         /**
          * @description Cursor pagination state returned next to `data` in list responses. Cursors are opaque,
@@ -2086,6 +2116,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Member"];
                 };
+            };
+        };
+    };
+    transferOwnership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipTransferRequest"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Ownership transferred. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -99,6 +99,7 @@ pnpm mcctl org create --name "Acme Corporation" --slug acme --owner-email you@ex
 
 * A new owner account receives a **set-your-password** email (open it in Mailpit, http://localhost:8025); the link works once and expires in 72 hours. An existing account simply becomes the Owner. `--print-setup-link` also prints the link (treat it like a password).
 * Sign in at http://localhost:8080 → you land on `/{slug}/home`. Invite people from **Administration → Invitations**; their invitation emails also arrive in Mailpit.
+* To give an existing organisation a new Owner (bootstrap after an import, or recovery when the Owner can no longer sign in): `pnpm mcctl user create-owner --org acme --email new-owner@example.test [--name "…"] [--print-setup-link]`. A new account gets the same one-time set-your-password email (no password is ever generated); an existing account is promoted; the previous Owner stays as an Admin and the change is audited. When the Owner can sign in, use **Administration → General → Transfer ownership** instead.
 * In Docker mode without Go installed: `docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app run --rm --no-deps migrate org create …`.
 * Sign-in, recovery and invitation attempts are rate limited per client address. Locally every browser request arrives from the Docker gateway address, so heavy manual testing can hit the limits; `pnpm test:e2e` resets them before it runs.
 
