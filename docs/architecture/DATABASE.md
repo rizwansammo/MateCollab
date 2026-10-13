@@ -1,6 +1,6 @@
 # Database Architecture and Initial Data Model
 
-Status: Implemented for identity and organisations (§4.1 identity, §4.2 organisations, memberships, settings, invitations and audit logs: `db/migrations/20261013*`); the rest is the Phase 0 proposal · Engine: PostgreSQL 18 · Related: [MULTITENANCY.md](MULTITENANCY.md), [ADR-003](DECISIONS.md#adr-003--postgresql-18-uuidv7-goose-sqlc--pgx), [ADR-006](DECISIONS.md#adr-006--normalised-conversation-model)
+Status: Implemented for identity and organisations (§4.1 identity, §4.2 organisations, memberships, settings, invitations and audit logs, `idempotency_keys`: `db/migrations/20261013*`, `20261014*`; account deletion adds `users.deletion_requested_at`/`deletion_scheduled_at` and owner-run anonymisation functions; audit CSV exports are tracked in `audit_exports`); the rest is the Phase 0 proposal · Engine: PostgreSQL 18 · Related: [MULTITENANCY.md](MULTITENANCY.md), [ADR-003](DECISIONS.md#adr-003--postgresql-18-uuidv7-goose-sqlc--pgx), [ADR-006](DECISIONS.md#adr-006--normalised-conversation-model)
 
 The SQL in this document is a **design specification**. The authoritative schema is created by versioned goose migrations in `db/migrations/`, introduced phase by phase (see [PHASES.md](../development/PHASES.md)). Column lists may grow; the structural decisions (keys, tenancy, relationships, sequencing) are what Phase 0 fixes. All statements in this document parse with the PostgreSQL grammar and every foreign key has a matching unique target (checked during Phase 0).
 

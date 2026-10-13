@@ -179,7 +179,7 @@ Responses carry `RateLimit-Policy` and `RateLimit` headers (IETF draft format) a
 | PUT / DELETE | `/api/v1/me/emails/{id}/primary` · `/api/v1/me/emails/{id}` | Make primary (step-up) / remove ✓ |
 | GET / PATCH | `/api/v1/me/preferences` | Personal settings document ✓ |
 | GET | `/api/v1/me/organisations` | Memberships for the organisation switcher ✓ |
-| POST / DELETE | `/api/v1/me/deletion` | Request account deletion (step-up; grace period) / cancel |
+| POST / DELETE | `/api/v1/me/deletion` | Request account deletion (step-up; 30-day grace period; Owners must transfer ownership first) / cancel ✓ |
 | PUT / DELETE | `/api/v1/me/avatar` | Avatar via upload ID (Phase 6) |
 | GET | `/api/v1/avatars/{userId}/{version}?size=64\|256` | Avatar image (authenticated; caller must share an organisation with the user); immutable caching (Phase 6) |
 | POST | `/api/v1/invitations/accept` | `{token, …}` in the body — accept invitation (creates the account if needed) ✓ |
@@ -195,20 +195,22 @@ Email links carry one-time tokens in the URL **fragment** (`/reset-password#toke
 
 | Method | Path | Purpose | Permission |
 |---|---|---|---|
-| GET / PATCH | `{org}` | Organisation profile ✓ | view / `org.settings.manage` |
+| GET / PATCH | `{org}` | Organisation profile: name, default time zone and language (ETag / optional `If-Match`) ✓ | view / `org.settings.manage` |
 | POST / DELETE | `{org}/deletion` | Request organisation deletion (step-up; 30-day window) / cancel | Owner |
 | GET | `{org}/logo/{version}` | Organisation logo image (immutable caching; Phase 6) | member |
 | PUT | `{org}/me/presence` | Own presence override and status text in this organisation | member |
-| PATCH | `{org}/me/membership` | Own title and contact email (one of the user's verified emails) | member |
+| PATCH | `{org}/me/membership` | Own title and contact email (one of the user's verified emails) ✓ | member |
+| GET | `{org}/roles` | Fixed roles with this organisation's effective permissions, from the authz catalogue ✓ | member |
 | GET / PUT | `{org}/settings/{section}` | `security` ✓ (ETag / `If-Match`; requiring 2FA needs it on the caller's own account first: `409 mfa_required_for_policy`); `messaging`, `meetings`, `files`, `notifications`, `support` arrive with their modules | `org.settings.manage` / `org.security.manage` |
 | GET | `{org}/members` | Directory (filters: role, status, q) ✓ | `org.directory.view` |
 | GET / PATCH | `{org}/members/{userId}` | Role and status ✓ (title via `{org}/me/membership`) | `org.members.manage` / `org.admins.manage` |
-| POST | `{org}/ownership-transfer` | Transfer to an Admin (step-up) | Owner |
-| GET / POST | `{org}/invitations` | List (`status=pending`) / create ✓ — Admin, Member and Guest invitations; Space grants for Guests (`space_ids`) arrive with Spaces in Phase 3 | `org.admins.manage` / `org.members.invite` / `org.guests.invite` |
+| POST | `{org}/ownership-transfer` | Transfer to an active Admin (step-up) ✓ | Owner |
+| GET / POST | `{org}/invitations` | List (`status=pending`) / create ✓ (`Idempotency-Key` supported) — Admin, Member and Guest invitations; Space grants for Guests (`space_ids`) arrive with Spaces in Phase 3 | `org.admins.manage` / `org.members.invite` / `org.guests.invite` |
 | DELETE | `{org}/invitations/{id}` | Revoke ✓ (idempotent) | inviter or Admin |
 | POST | `{org}/invitations/{id}/resend` | New link: rotates the token and restarts the 7-day expiry ✓ | inviter or Admin |
-| GET | `{org}/audit-logs` | Filter by actor, action, target, time | `audit.view` |
-| POST | `{org}/audit-logs/exports` | Async CSV export → file download | `audit.export` |
+| GET | `{org}/audit-logs` | Filter by actor, action (or group prefix), target, time ✓ | `audit.view` |
+| GET / POST | `{org}/audit-logs/exports` | Recent exports / async CSV export (`audit.export` job) ✓ | `audit.export` |
+| GET | `{org}/audit-logs/exports/{id}` · `/download` | Export status · 302 to a 60-second presigned download (files kept 7 days) ✓ | `audit.export` |
 | GET | `{org}/admin/overview` | Counts, storage usage | Admin |
 
 ### 9.3 Spaces and channels (Phase 3)

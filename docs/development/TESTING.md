@@ -38,10 +38,14 @@ Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts W
 | CSRF | Missing `X-MC-Client`, foreign `Origin`, missing `Origin`, missing/forged/other-session `X-CSRF-Token` → `403 csrf_failed` | Every flow runs with the real browser headers |
 | Recovery and verification | Reset: uniform `202`, unknown address gets no email, weak password rejected, single use, expiry, all sessions revoked; verification: single use, an address proved by another account cannot be claimed | Account setup and forgot/reset through Mailpit links; reused link refused |
 | Two-step verification | Enrolment, challenge instead of session, wrong code, replay of a used time step, challenge burned after five failures, recovery code single use, step-up required to disable | Enrol, sign in with a code, sign in with a recovery code |
-| Rate limiting | Per-account login limit with `Retry-After` (independent of client address); recovery limit | — |
+| Rate limiting | Per-account login limit with `Retry-After` (independent of client address); recovery limit | A client-supplied `X-Forwarded-For` through Nginx does not create a new rate-limit identity |
 | Invitations | Single use, tampered token, client-supplied `role`/`org_id` rejected, expiry, resend rotates the token, revoke (idempotent), duplicate pending, already a member, signed-out existing account must sign in, wrong signed-in account refused, cursor bound to filters | New accounts from email links; reuse refused; tampered link; existing account joins a second organisation |
 | Roles and settings | Guest restrictions; Members cannot manage; Admins cannot change themselves, the Owner, or Admins; role changes and deactivation apply on the next request; optimistic concurrency (`428`/`412`); invite policy; 2FA requirement per organisation; `session_max_age` per organisation | Guest and Member restrictions in the UI and API; deactivation removes access |
-| Tenant isolation | Every org route with another organisation's ID → 404; own path with another organisation's member/invitation IDs → 404; runtime role sees no rows without context; audit logs append-only | Organisation of another tenant shows "not found"; API calls answer 404 |
+| Tenant isolation | Generated suite (`isolation_integration_test.go`): the router is walked and **every** `/orgs/{orgId}/…` route is called by a non-member with another organisation's ID and by an Owner with another organisation's resource IDs — all 404; a path parameter without a fixture fails the test. Runtime role sees no rows without context; audit logs append-only | Organisation of another tenant shows "not found"; API calls answer 404 |
+| Ownership and lifecycle | Transfer: Owner only, step-up, only to an active Admin not scheduled for deletion, atomic swap with exactly one Owner, audited; `mcctl user create-owner`. Account deletion: Owners refused, step-up, 30-day schedule, cancel, emails and account events; the purge anonymises due accounts and never an Owner | — |
+| Organisation administration | Profile with `If-Match` (`412` on a stale version), validated time zone and language, rename visible immediately; role catalogue served from authz reflects organisation settings; own title and contact email (confirmed addresses only; role/status cannot be sent) | — |
+| Audit log | Filters (actor, action group, target, time), keyset pages bound to filters, Admin-only, other tenants 404, no secret in any metadata; CSV export job to object storage with formula neutralisation, presigned download, audited (skipped without MinIO) | — |
+| Idempotency | Retry with the same key replays the original `201` (one invitation, one email); same key with another request → `422`; keys are per user; in-progress → `409`; errors replay; expiry after 24 h; pending-invitation protection unchanged | — |
 | Secrets in logs | Every password, token, TOTP secret and recovery code used by the suite is asserted absent from the captured logs | — |
 
 ### Full Docker verification
@@ -64,9 +68,10 @@ Supporting checks inside the suites: `packages/ui/test/tokens.test.ts` asserts W
 | Go services | gofmt, `go vet` (both tag sets), sqlc freshness (`sqlc diff` in the pinned image), unit and contract tests with `-race`, integration tests against PostgreSQL/Valkey/Mailpit service containers (MinIO tests skip: no published image), binary build, govulncheck |
 | Visual regression and accessibility | `pnpm visual:test`; the report is uploaded when it fails |
 | Secrets, dependencies and licences | gitleaks over the full history, `pnpm audit --audit-level high`, licence policy, dependency review on pull requests |
+| End-to-end (identity and organisations) | Starts PostgreSQL, Valkey, MinIO, Mailpit, the migrate/api/worker/web images and Nginx (no LiveKit or ClamAV), then `pnpm test:e2e` seeded through the `mcctl` image; the report, traces and service logs are uploaded only on failure |
 | Container images build | `go.Dockerfile` (`api`, `worker`, `mcctl`) and `web.Dockerfile` |
 
-The end-to-end suite is not in CI yet: it needs the full stack, which CI does not start. Actions are pinned to commit SHAs. Dependency advisories that have no patched release are handled with the smallest compatible change and documented where they are applied (for example the `fast-glob` → `tinyglobby` override in `pnpm-workspace.yaml`).
+Actions are pinned to commit SHAs. Dependency advisories that have no patched release are handled with the smallest compatible change and documented where they are applied (for example the `fast-glob` → `tinyglobby` override in `pnpm-workspace.yaml`).
 
 ## Test matrix
 

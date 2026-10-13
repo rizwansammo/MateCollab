@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status: Phase 0 approved (2026-10-12); production foundation and design system complete; Phase 2 core (authentication, sessions, 2FA, organisations, memberships, invitations, RBAC, tenant isolation) implemented and awaiting review — the items not yet built are listed under Phase 2. No phase starts without explicit approval of the previous one.
+Status: Phase 0 approved (2026-10-12); production foundation and design system complete; Phase 2 (authentication, organisations and RBAC) complete and awaiting review. No phase starts without explicit approval of the previous one.
 
 Each phase ends with: working software behind the documented exit criteria, green CI (including tenant-isolation, permission and security suites for everything the phase adds), updated documentation, and a phase report.
 
@@ -80,7 +80,7 @@ Scope:
 
 **Exit criteria:** tenant-isolation harness (schema/database/API suites) and permission matrix running in CI; authentication security tests (enumeration, throttling, CSRF, TOTP replay, session rotation/revocation) green; E2E for login + 2FA + reset + invitation.
 
-**Not yet built from this scope:** ownership transfer, `mcctl user create-owner`, account deletion requests, own title/contact email (`{org}/me/membership`), Settings → Privacy, Admin → General, Roles & Permissions and Audit Logs (events are recorded; there is no list/export endpoint yet), the `Idempotency-Key` store for invitation creation (duplicates are already refused by the pending-invitation constraint), and running the E2E suite in CI.
+**Status:** all scope items and exit criteria are implemented. Account deletion uses a 30-day grace period and anonymisation (DATABASE.md §7); audit exports use the `audit.export` job and object storage; the end-to-end suite runs in CI.
 
 ## Phase 3 — Spaces and channels
 
