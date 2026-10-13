@@ -157,7 +157,7 @@ func (s *Service) Send(ctx context.Context, actor tenant.Actor, in SendInput) (M
 | Order | Middleware | Purpose |
 |---|---|---|
 | 1 | Request ID | Accept `X-Request-ID` from Nginx or generate; echo in responses and logs |
-| 2 | Real IP | Trust `X-Forwarded-For` only from `MC_TRUSTED_PROXIES` |
+| 2 | Real IP | Trust `X-Forwarded-For` only from `MC_TRUSTED_PROXIES`. Nginx, the public edge, replaces any client-supplied `X-Forwarded-For` with the connection address (`infra/nginx/snippets/proxy-headers.conf`), so clients cannot choose the address used for rate limits and audit records; behind a trusted load balancer, Nginx's realip module establishes that address first |
 | 3 | Recover | Panic → 500 Problem Details, alert |
 | 4 | Telemetry | Span + structured access log (no bodies, no query strings with tokens) |
 | 5 | Security headers | `Cache-Control: no-store`, `X-Content-Type-Options`, etc. for API responses |

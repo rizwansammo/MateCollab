@@ -309,3 +309,18 @@ test('signing out ends the session', async ({ browser }) => {
   await expect(member).toHaveURL(/\/login\?next=/);
   expect(await apiFromPage(member, 'GET', '/auth/session')).toBe(401);
 });
+
+test('a client cannot choose its rate-limit address with X-Forwarded-For', async ({ request, baseURL }) => {
+  // Password recovery allows 5 requests per hour per client address. Each request claims a
+  // different forwarded address and a different email (so only the address limit applies):
+  // the edge must ignore the claims, so the budget runs out.
+  const statuses: number[] = [];
+  for (let i = 1; i <= 7; i++) {
+    const res = await request.post('/api/v1/auth/password/forgot', {
+      headers: { Origin: baseURL ?? '', 'X-MC-Client': 'web', 'X-Forwarded-For': `203.0.113.${i}` },
+      data: { email: address(`spoof-${i}`) },
+    });
+    statuses.push(res.status());
+  }
+  expect(statuses).toContain(429);
+});
