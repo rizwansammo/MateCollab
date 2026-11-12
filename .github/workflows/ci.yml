@@ -150,8 +150,11 @@ jobs:
         run: pnpm audit --audit-level high
       - name: Licence policy
         run: pnpm run licenses
+      # Dependency Review needs GitHub's repository Dependency Graph. Keep it advisory until
+      # that repository feature is enabled; pnpm audit remains the blocking vulnerability gate.
       - name: Dependency review
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
