@@ -149,7 +149,7 @@ jobs:
       - name: npm advisories (high and critical fail)
         run: pnpm audit --audit-level high
       - name: Licence policy
-        run: pnpm licenses
+        run: pnpm run licenses
       - name: Dependency review
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
@@ -184,13 +184,16 @@ jobs:
         run: pnpm test:e2e
       - name: Service logs
         if: failure()
-        run: mkdir -p apps/e2e/suite/.results && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app logs --no-color api worker web nginx > apps/e2e/suite/.results/services.log 2>&1 || true
+        run: mkdir -p apps/e2e/ci-artifacts && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app logs --no-color api worker web nginx > apps/e2e/ci-artifacts/services.log 2>&1 || true
       - name: Upload report, traces and logs on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-report
-          path: apps/e2e/suite/.results
+          path: |
+            apps/e2e/suite/.results
+            apps/e2e/ci-artifacts
+          include-hidden-files: true
           retention-days: 14
 
   images:
