@@ -5,7 +5,7 @@
 # Targets: api, worker, mcctl. Runtime is distroless (no shell, no package manager) and runs as
 # the unprivileged nonroot user. Migrations ship with every image at /app/db/migrations.
 
-FROM golang:1.27-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+FROM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS build
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 WORKDIR /src/services
 COPY services/go.mod services/go.sum ./

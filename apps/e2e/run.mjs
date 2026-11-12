@@ -132,20 +132,25 @@ main(async () => {
     throw new Error('Could not build the Playwright runner image.');
   }
   const command = [
-    'node /runner/suite/support/forward.mjs 8080 host.docker.internal 8080 &',
+    'set -e',
+    'node /runner/suite/support/forward.mjs 8080 nginx 8080 &',
+    `node --input-type=module -e "for (let i = 0; i < 100; i++) { try { const r = await fetch('http://localhost:8080/api/v1/config'); if (r.ok) process.exit(0); } catch {} await new Promise((resolve) => setTimeout(resolve, 100)); } console.error('E2E proxy did not become ready'); process.exit(1);"`,
     `npx playwright test -c suite/playwright.config.ts${update ? ' --update-snapshots' : ''} ${passthrough.map((a) => `'${a.replaceAll("'", "'\\''")}'`).join(' ')}`,
-  ].join(' ');
+  ].join('\n');
   const status = spawnSync(
     'docker',
     [
       'run',
       '--rm',
       '--ipc=host',
-      '--add-host=host.docker.internal:host-gateway',
+      '--network',
+      'matecollab_edge',
+      '--network',
+      'matecollab_data',
       '-e',
       'E2E_BASE_URL=http://localhost:8080',
       '-e',
-      'E2E_MAILPIT=http://host.docker.internal:8025',
+      'E2E_MAILPIT=http://mailpit:8025',
       '-e',
       'E2E_VISUAL=1',
       '-v',

@@ -24,3 +24,6 @@ peerDependencyRules:
 # globSync API without braces; it is already used by Vite and Storybook.
 overrides:
   "@next/eslint-plugin-next>fast-glob": npm:tinyglobby@^0.2.17
+  "jsdom>undici": ^8.12.4
+  "eslint-plugin-react-hooks>zod": ^4.6.7
+  "zod-validation-error>zod": ^4.6.7
