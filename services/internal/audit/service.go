@@ -221,12 +221,14 @@ func (s *Service) DownloadURL(ctx context.Context, a tenant.Actor, id uuid.UUID,
 	if err := authz.Check(a, authz.SettingsFrom(ctx), authz.AuditExport); err != nil {
 		return "", err
 	}
-	if s.Storage == nil {
-		return "", errExportsUnavailable
-	}
 	r, err := s.getExport(ctx, a, id)
 	if err != nil {
 		return "", err
+	}
+	// Resolve the tenant-scoped resource before checking optional infrastructure so a caller
+	// can never distinguish another organisation's export from a missing one.
+	if s.Storage == nil {
+		return "", errExportsUnavailable
 	}
 	if r.Status != "completed" || r.ObjectKey == nil || !s.Now().Before(r.ExpiresAt) {
 		return "", apperr.Conflict("export_not_ready", "This export is not available for download.")
