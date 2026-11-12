@@ -148,7 +148,7 @@ test('owner invites a member and a guest; they create accounts from the emails',
   if (visual) {
     await settle(ownerA);
     // Member rows carry per-run addresses and dates; the footer shows the build version.
-    await expect(ownerA).toHaveScreenshot('members.png', { mask: [members, ownerA.getByText(/^Connected/)] });
+    await expect(ownerA).toHaveScreenshot('members.png', { mask: [members, ownerA.getByRole('status')] });
   }
 });
 
