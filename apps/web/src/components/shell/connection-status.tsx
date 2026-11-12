@@ -13,10 +13,10 @@ export function ConnectionStatus() {
         ? 'bg-presence-dnd'
         : 'bg-presence-offline';
   return (
-    <p role="status" className="flex items-center gap-1.75 text-11 text-fg-muted">
+    <p role="status" className="flex w-full min-w-0 items-center gap-1.75 overflow-hidden text-11 text-fg-muted">
       <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', tone)} />
       {state.status === 'loading' ? <span>Connecting…</span> : null}
-      {state.status === 'ready' ? <span>Connected · {state.config.version}</span> : null}
+      {state.status === 'ready' ? <span className="max-w-full truncate">Connected · {state.config.version}</span> : null}
       {state.status === 'error' ? (
         <>
           <span>Can’t reach the server</span>

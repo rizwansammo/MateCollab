@@ -179,6 +179,7 @@ jobs:
           MC_NGINX_API_UPSTREAM: api:8081
           MC_BUILD_COMMIT: ${{ github.sha }}
         run: >-
+          MC_BUILD_COMMIT="${GITHUB_SHA::7}"
           docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile app
           up --build -d --wait postgres valkey minio mailpit migrate api worker web nginx
       - name: Critical flows (sign-in, 2FA, recovery, invitations, roles, tenant isolation)
