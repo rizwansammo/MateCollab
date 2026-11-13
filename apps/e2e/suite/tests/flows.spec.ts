@@ -172,7 +172,7 @@ test('Spaces, Channels and guest grants are enforced across the organisation', a
   await expect(member.getByRole('link', { name: 'Engineering' }).first()).toBeVisible();
   expect(await apiFromPage(member, 'GET', `/orgs/${orgA.id}/spaces/${spaceId}/channels`)).toBe(403);
   await member.getByRole('button', { name: 'Join Space' }).click();
-  await expect(member.getByRole('button', { name: 'Open Space' })).toBeVisible();
+  await expect(member.getByRole('link', { name: 'Open Space' })).toBeVisible();
   await member.goto(engineering);
   await member.getByRole('tab', { name: 'Channels' }).click();
   await expect(member.getByRole('link', { name: /general/ }).first()).toBeVisible();
