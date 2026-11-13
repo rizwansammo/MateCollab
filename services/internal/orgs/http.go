@@ -33,6 +33,8 @@ func (h *Handler) OrgRoutes(r chi.Router) {
 	r.Patch("/", h.update)
 	r.Get("/roles", h.roles)
 	r.Get("/settings/security", h.getSecurity)
+	r.Get("/settings/messaging", h.getMessaging)
+	r.Put("/settings/messaging", h.putMessaging)
 	r.Put("/settings/security", h.putSecurity)
 }
 

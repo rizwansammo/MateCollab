@@ -336,6 +336,19 @@ func (s *Service) UpdateMember(ctx context.Context, a tenant.Actor, user uuid.UU
 			if err := q.UpdateMemberRole(ctx, store.UpdateMemberRoleParams{OrgID: uuid.UUID(a.OrgID), UserID: user, Role: string(change.NewRole)}); err != nil {
 				return err
 			}
+			// A Member becoming a Guest must not retain broad existing Space access.
+			// Grant only via explicit Space membership operations after this change.
+			if change.NewRole == tenant.RoleGuest {
+				if _, err := tx.Exec(ctx, `DELETE FROM space_members WHERE org_id=$1 AND user_id=$2`, uuid.UUID(a.OrgID), user); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx, `UPDATE conversation_members cm SET left_at=now()
+                    FROM conversations c WHERE cm.org_id=$1 AND cm.user_id=$2
+                    AND c.org_id=cm.org_id AND c.id=cm.conversation_id AND c.kind='channel'
+                    AND cm.left_at IS NULL`, uuid.UUID(a.OrgID), user); err != nil {
+					return err
+				}
+			}
 			if err := audit.RecordActor(ctx, tx, a, meta, audit.Entry{Action: "member.role_changed", TargetType: "member", TargetID: user.String(),
 				Metadata: map[string]any{"from": cur.Role, "to": string(change.NewRole)}}); err != nil {
 				return err

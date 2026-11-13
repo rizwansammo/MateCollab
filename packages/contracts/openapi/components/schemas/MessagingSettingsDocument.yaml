@@ -1,0 +1,22 @@
+type: object
+additionalProperties: false
+required:
+- public_space_creation
+- private_space_creation
+- version
+- updated_at
+properties:
+  public_space_creation:
+    type: string
+    enum:
+    - all
+    - admins
+  private_space_creation:
+    type: string
+    enum:
+    - all
+    - admins
+  version:
+    type: integer
+  updated_at:
+    $ref: ./Timestamp.yaml

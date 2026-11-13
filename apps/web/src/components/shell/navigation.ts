@@ -113,7 +113,6 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
   spaces: {
     title: 'Spaces',
     links: [{ label: 'Browse Spaces', href: '/spaces', path: '/spaces', icon: LayoutGrid }],
-    note: 'Spaces you join, and their channels, will appear here.',
   },
   meetings: {
     title: 'Meetings',
@@ -158,6 +157,8 @@ export const sidebarSections: Record<ModuleId, SidebarSection> = {
     title: 'Administration',
     links: [
       { label: 'General', href: '/admin/general', path: '/admin/general', icon: Building2 },
+      { label: 'Spaces', href: '/admin/spaces', path: '/admin/spaces', icon: Layers },
+      { label: 'Messaging policy', href: '/admin/messaging', path: '/admin/messaging', icon: MessageSquare },
       { label: 'Members', href: '/admin/members', path: '/admin/members', icon: UsersRound },
       { label: 'Invitations', href: '/admin/invitations', path: '/admin/invitations', icon: UserRoundPlus },
       { label: 'Roles and permissions', href: '/admin/roles', path: '/admin/roles', icon: KeyRound },

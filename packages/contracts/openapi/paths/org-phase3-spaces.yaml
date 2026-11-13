@@ -1,0 +1,45 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: listSpaces
+  summary: listSpaces
+  tags:
+  - spaces
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/SpaceList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+post:
+  operationId: createSpace
+  summary: createSpace
+  tags:
+  - spaces
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '201':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Space.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/SpaceInput.yaml

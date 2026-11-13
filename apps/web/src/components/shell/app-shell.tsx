@@ -62,6 +62,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, type ReactNode } from 'react';
 import { useSession, useSignOut } from '@/features/auth/session';
 import { orgPath } from '@/features/org/org-context';
+import { SpacesSidebarTree } from '@/features/spaces/sidebar-tree';
 import { isAdministrator, roleNames } from '@/features/org/roles';
 import { useRuntimeConfig } from '@/lib/api';
 import { SIDEBAR_WIDTH_COOKIE, writePreferenceCookie } from '@/lib/preferences';
@@ -341,6 +342,7 @@ function ContextSidebar({
           </SidebarItem>
         ))}
       </nav>
+      {current === 'spaces' ? <SpacesSidebarTree /> : null}
       {section.note ? (
         <p className="mx-2.5 mt-6 text-12 leading-[1.6] text-fg-muted">{section.note}</p>
       ) : null}

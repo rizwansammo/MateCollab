@@ -35,6 +35,7 @@ type Invitation struct {
 	SendCount   int32
 	CreatedAt   time.Time
 	AcceptedAt  *time.Time
+	SpaceIDs    []uuid.UUID
 }
 
 func invitationStatus(now time.Time, accepted, revoked *time.Time, expires time.Time) string {
@@ -67,7 +68,7 @@ func (s *Service) invitationLink(token string) string {
 
 // Invite creates an invitation and emails the link. The role determines which permission is
 // required; the organisation always comes from the actor.
-func (s *Service) Invite(ctx context.Context, a tenant.Actor, email, role string, meta httpx.ClientMeta) (Invitation, error) {
+func (s *Service) Invite(ctx context.Context, a tenant.Actor, email, role string, meta httpx.ClientMeta, spaceIDs ...uuid.UUID) (Invitation, error) {
 	email = strings.TrimSpace(email)
 	r := tenant.Role(role)
 	var fields []apperr.FieldError
@@ -77,6 +78,17 @@ func (s *Service) Invite(ctx context.Context, a tenant.Actor, email, role string
 	perm, ok := authz.InvitePermissionFor(r)
 	if !ok {
 		fields = append(fields, apperr.Field("role", "invalid", "Choose Admin, Member or Guest."))
+	}
+	if len(spaceIDs) > 100 || (r != tenant.RoleGuest && len(spaceIDs) > 0) {
+		fields = append(fields, apperr.Field("space_ids", "invalid", "Only Guests can be granted up to 100 Spaces."))
+	}
+	seen := map[uuid.UUID]bool{}
+	for _, id := range spaceIDs {
+		if id == uuid.Nil || seen[id] {
+			fields = append(fields, apperr.Field("space_ids", "invalid", "Choose distinct valid Spaces."))
+			break
+		}
+		seen[id] = true
 	}
 	if len(fields) > 0 {
 		return Invitation{}, apperr.Validation(fields...)
@@ -121,12 +133,23 @@ func (s *Service) Invite(ctx context.Context, a tenant.Actor, email, role string
 		if err != nil {
 			return err
 		}
+		for _, spaceID := range spaceIDs {
+			tag, err := tx.Exec(ctx, `INSERT INTO invitation_space_grants (org_id,invitation_id,space_id)
+              SELECT $1,$2,s.id FROM spaces s WHERE s.org_id=$1 AND s.id=$3 AND s.archived_at IS NULL`,
+				uuid.UUID(a.OrgID), row.ID, spaceID)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() != 1 {
+				return apperr.Validation(apperr.Field("space_ids", "invalid", "A selected Space is unavailable."))
+			}
+		}
 		inviter, _, err := s.Users.Profile(ctx, tx, a.UserID)
 		if err != nil {
 			return err
 		}
 		out = Invitation{ID: row.ID, Email: row.Email, Role: tenant.Role(row.Role), Status: "pending", InvitedBy: row.InvitedBy,
-			InviterName: inviter, ExpiresAt: row.ExpiresAt, LastSentAt: row.LastSentAt, SendCount: row.SendCount, CreatedAt: row.CreatedAt}
+			InviterName: inviter, ExpiresAt: row.ExpiresAt, LastSentAt: row.LastSentAt, SendCount: row.SendCount, CreatedAt: row.CreatedAt, SpaceIDs: spaceIDs}
 		if err := audit.RecordActor(ctx, tx, a, meta, audit.Entry{Action: "invitation.created", TargetType: "invitation",
 			TargetID: row.ID.String(), Metadata: map[string]any{"role": role}}); err != nil {
 			return err
@@ -434,6 +457,26 @@ func (s *Service) Accept(ctx context.Context, in AcceptInput, principal *auth.Pr
 			}
 		default:
 			return err
+		}
+		// Existing access cannot silently carry across a fresh Guest invitation.
+		if accepted.Role == string(tenant.RoleGuest) {
+			if _, err := tx.Exec(ctx, `DELETE FROM space_members WHERE org_id=$1 AND user_id=$2`, inv.OrgID, uuid.UUID(user)); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE conversation_members cm SET left_at=now()
+                FROM conversations c WHERE cm.org_id=$1 AND cm.user_id=$2
+                  AND c.org_id=cm.org_id AND c.id=cm.conversation_id AND c.kind='channel'
+                  AND cm.left_at IS NULL`, inv.OrgID, uuid.UUID(user)); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO space_members(org_id,space_id,user_id,role,added_by)
+                SELECT g.org_id,g.space_id,$2,'member',i.invited_by
+                FROM invitation_space_grants g
+                JOIN invitations i ON i.org_id=g.org_id AND i.id=g.invitation_id
+                JOIN spaces s ON s.org_id=g.org_id AND s.id=g.space_id AND s.archived_at IS NULL
+                WHERE g.org_id=$1 AND g.invitation_id=$3`, inv.OrgID, uuid.UUID(user), inv.ID); err != nil {
+				return err
+			}
 		}
 		return audit.Record(ctx, tx, org, user, sessionOf(principal), meta, audit.Entry{
 			Action: "invitation.accepted", TargetType: "invitation", TargetID: inv.ID.String(),

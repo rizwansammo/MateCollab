@@ -1,0 +1,50 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: spaceId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+get:
+  operationId: listChannels
+  summary: listChannels
+  tags:
+  - channels
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ChannelList.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+post:
+  operationId: createChannel
+  summary: createChannel
+  tags:
+  - channels
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '201':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Channel.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ChannelInput.yaml

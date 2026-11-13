@@ -31,3 +31,7 @@ properties:
     $ref: ./Timestamp.yaml
   accepted_at:
     $ref: ./NullableTimestamp.yaml
+  space_ids:
+    type: array
+    items:
+      $ref: ./Id.yaml

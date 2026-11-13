@@ -833,6 +833,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orgs/{orgId}/settings/messaging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** getMessagingSettings */
+        get: operations["getMessagingSettings"];
+        /** updateMessagingSettings */
+        put: operations["updateMessagingSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orgs/{orgId}/settings/security": {
         parameters: {
             query?: never;
@@ -860,6 +881,270 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orgs/{orgId}/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** listSpaces */
+        get: operations["listSpaces"];
+        put?: never;
+        /** createSpace */
+        post: operations["createSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** getSpace */
+        get: operations["getSpace"];
+        /** updateSpace */
+        put: operations["updateSpace"];
+        post?: never;
+        /** Permanently delete a Space */
+        delete: operations["deleteSpace"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** archiveSpace */
+        post: operations["archiveSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** listChannels */
+        get: operations["listChannels"];
+        put?: never;
+        /** createChannel */
+        post: operations["createChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/channels/{channelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** getChannel */
+        get: operations["getChannel"];
+        /** updateChannel */
+        put: operations["updateChannel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** archiveChannel */
+        post: operations["archiveChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** listChannelMembers */
+        get: operations["listChannelMembers"];
+        put?: never;
+        /** addChannelMember */
+        post: operations["addChannelMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+                userId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** removeChannelMember */
+        delete: operations["removeChannelMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** joinSpace */
+        post: operations["joinSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** leaveSpace */
+        post: operations["leaveSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        /** listSpaceMembers */
+        get: operations["listSpaceMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{orgId}/spaces/{spaceId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+                userId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** setSpaceMember */
+        put: operations["setSpaceMember"];
+        post?: never;
+        /** removeSpaceMember */
+        delete: operations["removeSpaceMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -881,6 +1166,9 @@ export interface components {
         AccountDeletion: {
             /** @description When the account will be anonymised unless the request is cancelled first. */
             scheduled_at: components["schemas"]["Timestamp"];
+        };
+        AddChannelMemberRequest: {
+            user_id: components["schemas"]["Id"];
         };
         /** @description An asynchronous CSV export of the audit log. Files can be downloaded for 7 days. */
         AuditExport: {
@@ -941,12 +1229,45 @@ export interface components {
         ChangePasswordRequest: {
             new_password: string;
         };
+        Channel: {
+            archived_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            created_by: components["schemas"]["Id"];
+            id: components["schemas"]["Id"];
+            is_default: boolean;
+            member: boolean;
+            name: string;
+            org_id: components["schemas"]["Id"];
+            space_id: components["schemas"]["Id"];
+            topic: string | null;
+            updated_at: components["schemas"]["Timestamp"];
+            /** @enum {string} */
+            visibility: "public" | "private";
+        };
+        ChannelInput: {
+            name: string;
+            topic?: string | null;
+            /** @enum {string} */
+            visibility?: "public" | "private";
+        };
+        ChannelList: {
+            data: components["schemas"]["Channel"][];
+        };
+        ChannelMember: {
+            display_name: string;
+            joined_at: components["schemas"]["Timestamp"];
+            user_id: components["schemas"]["Id"];
+        };
+        ChannelMemberList: {
+            data: components["schemas"]["ChannelMember"][];
+        };
         CodeRequest: {
             code: string;
         };
         CreateInvitationRequest: {
             email: string;
             role: components["schemas"]["InvitableRole"];
+            space_ids?: components["schemas"]["Id"][];
         };
         CreateOrganisationRequest: {
             name: string;
@@ -1004,6 +1325,7 @@ export interface components {
             last_sent_at: components["schemas"]["Timestamp"];
             role: components["schemas"]["InvitableRole"];
             send_count: number;
+            space_ids?: components["schemas"]["Id"][];
             status: components["schemas"]["InvitationStatus"];
         };
         InvitationList: {
@@ -1066,6 +1388,20 @@ export interface components {
          * @enum {string}
          */
         MembershipStatus: "active" | "suspended" | "deactivated";
+        MessagingSettings: {
+            /** @enum {string} */
+            private_space_creation: "all" | "admins";
+            /** @enum {string} */
+            public_space_creation: "all" | "admins";
+        };
+        MessagingSettingsDocument: {
+            /** @enum {string} */
+            private_space_creation: "all" | "admins";
+            /** @enum {string} */
+            public_space_creation: "all" | "admins";
+            updated_at: components["schemas"]["Timestamp"];
+            version: number;
+        };
         /** @description Exactly one of `code` (authenticator app) or `recovery_code`. */
         MFALoginRequest: {
             code?: string;
@@ -1313,6 +1649,50 @@ export interface components {
         SessionList: {
             /** @description Active sessions, the current one first. */
             data: components["schemas"]["SessionItem"][];
+        };
+        SetSpaceMemberRequest: {
+            /** @enum {string} */
+            role: "space_admin" | "member";
+        };
+        Space: {
+            archived_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            created_by: components["schemas"]["Id"];
+            description: string | null;
+            id: components["schemas"]["Id"];
+            joined: boolean;
+            /** @enum {string} */
+            kind: "team" | "project";
+            name: string;
+            org_id: components["schemas"]["Id"];
+            overview: string | null;
+            updated_at: components["schemas"]["Timestamp"];
+            /** @enum {string} */
+            viewer_role?: "space_admin" | "member";
+            /** @enum {string} */
+            visibility: "public" | "private";
+        };
+        SpaceInput: {
+            description?: string | null;
+            /** @enum {string} */
+            kind?: "team" | "project";
+            name: string;
+            overview?: string | null;
+            /** @enum {string} */
+            visibility?: "public" | "private";
+        };
+        SpaceList: {
+            data: components["schemas"]["Space"][];
+        };
+        SpaceMember: {
+            display_name: string;
+            joined_at: components["schemas"]["Timestamp"];
+            /** @enum {string} */
+            role: "space_admin" | "member";
+            user_id: components["schemas"]["Id"];
+        };
+        SpaceMemberList: {
+            data: components["schemas"]["SpaceMember"][];
         };
         /**
          * Format: date-time
@@ -2678,6 +3058,62 @@ export interface operations {
             };
         };
     };
+    getMessagingSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingSettingsDocument"];
+                };
+            };
+        };
+    };
+    updateMessagingSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessagingSettings"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingSettingsDocument"];
+                };
+            };
+        };
+    };
     getSecuritySettings: {
         parameters: {
             query?: never;
@@ -2736,6 +3172,517 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SecuritySettingsDocument"];
                 };
+            };
+        };
+    };
+    listSpaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceList"];
+                };
+            };
+        };
+    };
+    createSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpaceInput"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"];
+                };
+            };
+        };
+    };
+    getSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"];
+                };
+            };
+        };
+    };
+    updateSpace: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpaceInput"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Space"];
+                };
+            };
+        };
+    };
+    deleteSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Space deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archiveSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelList"];
+                };
+            };
+        };
+    };
+    createChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelInput"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Channel"];
+                };
+            };
+        };
+    };
+    getChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Channel"];
+                };
+            };
+        };
+    };
+    updateChannel: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelInput"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Channel"];
+                };
+            };
+        };
+    };
+    archiveChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listChannelMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelMemberList"];
+                };
+            };
+        };
+    };
+    addChannelMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddChannelMemberRequest"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeChannelMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: components["schemas"]["Id"];
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+                userId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    joinSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    leaveSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listSpaceMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceMemberList"];
+                };
+            };
+        };
+    };
+    setSpaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+                userId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSpaceMemberRequest"];
+            };
+        };
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeSpaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation ID. Organisations the caller does not belong to answer 404. */
+                orgId: components["parameters"]["OrgId"];
+                spaceId: components["schemas"]["Id"];
+                userId: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            "4XX": components["responses"]["Problem"];
+            "5XX": components["responses"]["Problem"];
+            /** @description Completed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

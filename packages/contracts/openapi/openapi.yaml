@@ -35,6 +35,10 @@ tags:
     description: Invitations by email, from creation to acceptance.
   - name: audit
     description: The organisation audit log and its CSV exports.
+  - name: spaces
+    description: Organisation Spaces, members and Space lifecycle.
+  - name: channels
+    description: Channels are conversation resources scoped to a Space.
 paths:
   /config:
     $ref: ./paths/config.yaml
@@ -120,6 +124,32 @@ paths:
     $ref: ./paths/org-audit-export.yaml
   /orgs/{orgId}/audit-logs/exports/{exportId}/download:
     $ref: ./paths/org-audit-export-download.yaml
+  /orgs/{orgId}/spaces:
+    $ref: ./paths/org-phase3-spaces.yaml
+  /orgs/{orgId}/spaces/{spaceId}:
+    $ref: ./paths/org-phase3-spaces-spaceId.yaml
+  /orgs/{orgId}/spaces/{spaceId}/archive:
+    $ref: ./paths/org-phase3-spaces-spaceId-archive.yaml
+  /orgs/{orgId}/spaces/{spaceId}/join:
+    $ref: ./paths/org-phase3-spaces-spaceId-join.yaml
+  /orgs/{orgId}/spaces/{spaceId}/leave:
+    $ref: ./paths/org-phase3-spaces-spaceId-leave.yaml
+  /orgs/{orgId}/spaces/{spaceId}/members:
+    $ref: ./paths/org-phase3-spaces-spaceId-members.yaml
+  /orgs/{orgId}/spaces/{spaceId}/members/{userId}:
+    $ref: ./paths/org-phase3-spaces-spaceId-members-userId.yaml
+  /orgs/{orgId}/spaces/{spaceId}/channels:
+    $ref: ./paths/org-phase3-spaces-spaceId-channels.yaml
+  /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}:
+    $ref: ./paths/org-phase3-spaces-spaceId-channels-channelId.yaml
+  /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/archive:
+    $ref: ./paths/org-phase3-spaces-spaceId-channels-channelId-archive.yaml
+  /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/members:
+    $ref: ./paths/org-phase3-spaces-spaceId-channels-channelId-members.yaml
+  /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/members/{userId}:
+    $ref: ./paths/org-phase3-spaces-spaceId-channels-channelId-members-userId.yaml
+  /orgs/{orgId}/settings/messaging:
+    $ref: ./paths/org-phase3-settings-messaging.yaml
 components:
   securitySchemes:
     session:
@@ -272,6 +302,34 @@ components:
       $ref: ./components/schemas/AuditExport.yaml
     AuditExportList:
       $ref: ./components/schemas/AuditExportList.yaml
+    Space:
+      $ref: ./components/schemas/Space.yaml
+    SpaceInput:
+      $ref: ./components/schemas/SpaceInput.yaml
+    SpaceList:
+      $ref: ./components/schemas/SpaceList.yaml
+    SpaceMember:
+      $ref: ./components/schemas/SpaceMember.yaml
+    SpaceMemberList:
+      $ref: ./components/schemas/SpaceMemberList.yaml
+    Channel:
+      $ref: ./components/schemas/Channel.yaml
+    ChannelInput:
+      $ref: ./components/schemas/ChannelInput.yaml
+    ChannelList:
+      $ref: ./components/schemas/ChannelList.yaml
+    ChannelMember:
+      $ref: ./components/schemas/ChannelMember.yaml
+    ChannelMemberList:
+      $ref: ./components/schemas/ChannelMemberList.yaml
+    SetSpaceMemberRequest:
+      $ref: ./components/schemas/SetSpaceMemberRequest.yaml
+    AddChannelMemberRequest:
+      $ref: ./components/schemas/AddChannelMemberRequest.yaml
+    MessagingSettings:
+      $ref: ./components/schemas/MessagingSettings.yaml
+    MessagingSettingsDocument:
+      $ref: ./components/schemas/MessagingSettingsDocument.yaml
   responses:
     Problem:
       $ref: ./components/responses/Problem.yaml

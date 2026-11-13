@@ -68,3 +68,15 @@ sql:
       go:
         <<: *gogen
         out: internal/audit/store
+  - <<: *module
+    queries: ../db/queries/spaces
+    gen:
+      go:
+        <<: *gogen
+        out: internal/spaces/store
+  - <<: *module
+    queries: ../db/queries/channels
+    gen:
+      go:
+        <<: *gogen
+        out: internal/channels/store

@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required:
+- user_id
+- display_name
+- joined_at
+properties:
+  user_id:
+    $ref: ./Id.yaml
+  display_name:
+    type: string
+  joined_at:
+    $ref: ./Timestamp.yaml

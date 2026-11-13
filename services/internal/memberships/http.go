@@ -106,12 +106,13 @@ type invitationJSON struct {
 	SendCount  int32       `json:"send_count"`
 	CreatedAt  time.Time   `json:"created_at"`
 	AcceptedAt *time.Time  `json:"accepted_at"`
+	SpaceIDs   []uuid.UUID `json:"space_ids,omitempty"`
 }
 
 func invitationToJSON(i Invitation) invitationJSON {
 	return invitationJSON{ID: i.ID, Email: i.Email, Role: i.Role, Status: i.Status,
 		InvitedBy: inviterJSON{UserID: i.InvitedBy, DisplayName: i.InviterName}, ExpiresAt: i.ExpiresAt,
-		LastSentAt: i.LastSentAt, SendCount: i.SendCount, CreatedAt: i.CreatedAt, AcceptedAt: i.AcceptedAt}
+		LastSentAt: i.LastSentAt, SendCount: i.SendCount, CreatedAt: i.CreatedAt, AcceptedAt: i.AcceptedAt, SpaceIDs: i.SpaceIDs}
 }
 
 type pageJSON struct {
@@ -264,15 +265,16 @@ func (h *Handler) listInvitations(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createInvitation(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email string `json:"email"`
-		Role  string `json:"role"`
+		Email    string      `json:"email"`
+		Role     string      `json:"role"`
+		SpaceIDs []uuid.UUID `json:"space_ids"`
 	}
 	if err := httpx.DecodeJSON(w, r, &req, 8<<10); err != nil {
 		httpx.WriteProblem(w, r, err)
 		return
 	}
 	a := actor(r)
-	inv, err := h.svc.Invite(r.Context(), a, req.Email, req.Role, httpx.ClientMetaFrom(r))
+	inv, err := h.svc.Invite(r.Context(), a, req.Email, req.Role, httpx.ClientMetaFrom(r), req.SpaceIDs...)
 	if err != nil {
 		httpx.WriteProblem(w, r, err)
 		return

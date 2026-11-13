@@ -152,6 +152,77 @@ test('owner invites a member and a guest; they create accounts from the emails',
   }
 });
 
+test('Spaces, Channels and guest grants are enforced across the organisation', async ({ browser }) => {
+  const ownerA = await as(browser, 'ownerA');
+  const member = await as(browser, 'member');
+  const guest = await as(browser, 'guest');
+
+  await ownerA.goto(`/${orgA.slug}/spaces`);
+  await ownerA.getByRole('button', { name: 'Create Space' }).first().click();
+  const create = ownerA.getByRole('dialog');
+  await create.getByLabel('Space name').fill('Engineering');
+  await create.getByRole('button', { name: 'Create Space' }).click();
+  await expect(ownerA.getByRole('link', { name: 'Engineering' }).first()).toBeVisible();
+  const engineering = await ownerA.getByRole('link', { name: 'Engineering' }).first().getAttribute('href');
+  if (!engineering) throw new Error('Space link missing');
+  const spaceId = engineering.split('/').at(-1);
+  if (!spaceId) throw new Error('Space ID missing');
+
+  await member.goto(`/${orgA.slug}/spaces`);
+  await expect(member.getByRole('link', { name: 'Engineering' }).first()).toBeVisible();
+  expect(await apiFromPage(member, 'GET', `/orgs/${orgA.id}/spaces/${spaceId}/channels`)).toBe(403);
+  await member.getByRole('button', { name: 'Join Space' }).click();
+  await expect(member.getByRole('button', { name: 'Open Space' })).toBeVisible();
+  await member.goto(engineering);
+  await member.getByRole('tab', { name: 'Channels' }).click();
+  await expect(member.getByRole('link', { name: /general/ }).first()).toBeVisible();
+
+  await ownerA.goto(`/${orgA.slug}/spaces`);
+  await ownerA.getByRole('button', { name: 'Create Space' }).first().click();
+  const privateDialog = ownerA.getByRole('dialog');
+  await privateDialog.getByLabel('Space name').fill('Finance');
+  await privateDialog.getByRole('combobox', { name: 'Visibility' }).click();
+  await ownerA.getByRole('option', { name: /Private/ }).click();
+  await privateDialog.getByRole('button', { name: 'Create Space' }).click();
+  await expect(ownerA.getByRole('link', { name: 'Finance' }).first()).toBeVisible();
+
+  await member.goto(`/${orgA.slug}/spaces`);
+  await expect(member.getByRole('link', { name: 'Finance' })).toHaveCount(0);
+  await guest.goto(`/${orgA.slug}/spaces`);
+  await expect(guest.getByRole('link', { name: 'Engineering' })).toHaveCount(0);
+
+  await ownerA.goto(engineering);
+  await ownerA.getByRole('tab', { name: 'Members' }).click();
+  await ownerA.getByRole('combobox', { name: 'Organisation member' }).click();
+  await ownerA.getByRole('option', { name: 'Gus Guest' }).click();
+  await ownerA.getByRole('button', { name: 'Grant access' }).click();
+  await guest.goto(`/${orgA.slug}/spaces`);
+  await expect(guest.getByRole('link', { name: 'Engineering' }).first()).toBeVisible();
+  await expect(guest.getByRole('link', { name: 'Finance' })).toHaveCount(0);
+
+  await ownerA.goto(engineering);
+  await ownerA.getByRole('tab', { name: 'Channels' }).click();
+  await ownerA.getByRole('button', { name: 'New Channel' }).click();
+  const newChannel = ownerA.getByRole('dialog');
+  await newChannel.getByLabel('Channel name').fill('leadership');
+  await newChannel.getByRole('combobox', { name: 'Visibility' }).click();
+  await ownerA.getByRole('option', { name: 'Private', exact: true }).click();
+  await newChannel.getByRole('button', { name: 'Create Channel' }).click();
+  const secretLink = ownerA.getByRole('link', { name: /leadership/ }).last();
+  await expect(secretLink).toBeVisible();
+  const secretHref = await secretLink.getAttribute('href');
+  if (!secretHref) throw new Error('Private Channel link missing');
+  const channelId = secretHref.split('/').at(-1);
+  if (!channelId) throw new Error('Channel ID missing');
+  expect(await apiFromPage(guest, 'GET', `/orgs/${orgA.id}/spaces/${spaceId}/channels/${channelId}`)).toBe(
+    404,
+  );
+
+  // An Owner of another organisation cannot address Acme resources.
+  const ownerB = await as(browser, 'ownerB');
+  expect(await apiFromPage(ownerB, 'GET', `/orgs/${orgA.id}/spaces/${spaceId}`)).toBe(404);
+});
+
 test('a tampered invitation link is refused', async ({ page }) => {
   await page.goto('/invite#token=not-a-real-invitation-token');
   await expect(page.getByRole('heading', { name: 'This invitation can’t be used' })).toBeVisible();

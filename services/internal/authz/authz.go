@@ -29,6 +29,10 @@ const (
 	OrgDelete            Permission = "org.delete"
 	AuditView            Permission = "audit.view"
 	AuditExport          Permission = "audit.export"
+	SpacesManageAny      Permission = "spaces.manage_any"
+	SpaceCreatePublic    Permission = "space.create.public"
+	SpaceCreatePrivate   Permission = "space.create.private"
+	SpaceBrowse          Permission = "space.browse"
 )
 
 // PermissionInfo documents one permission for the Roles & Permissions view.
@@ -56,17 +60,25 @@ func Catalogue() []PermissionInfo {
 		{AuditExport, "Export the audit log", ""},
 		{OrgOwnershipTransfer, "Transfer ownership", ""},
 		{OrgDelete, "Delete the organisation", ""},
+		{SpacesManageAny, "Manage any Space", ""},
+		{SpaceCreatePublic, "Create public Spaces", "messaging.public_space_creation"},
+		{SpaceCreatePrivate, "Create private Spaces", "messaging.private_space_creation"},
+		{SpaceBrowse, "Browse public Spaces", ""},
 	}
 }
 
 // Settings are the organisation settings that refine role permissions (the `security` section).
 type Settings struct {
-	InvitePermission  string // "admins" (default) or "members"
-	AllowGuestInvites bool
+	InvitePermission     string // "admins" (default) or "members"
+	AllowGuestInvites    bool
+	PublicSpaceCreation  string // all or admins
+	PrivateSpaceCreation string // all or admins
 }
 
 // DefaultSettings are used until an organisation changes them.
-func DefaultSettings() Settings { return Settings{InvitePermission: "admins", AllowGuestInvites: true} }
+func DefaultSettings() Settings {
+	return Settings{InvitePermission: "admins", AllowGuestInvites: true, PublicSpaceCreation: "all", PrivateSpaceCreation: "all"}
+}
 
 func isAdmin(r tenant.Role) bool { return r == tenant.RoleOwner || r == tenant.RoleAdmin }
 
@@ -85,6 +97,14 @@ func Allowed(role tenant.Role, s Settings, p Permission) bool {
 		return isAdmin(role) && s.AllowGuestInvites
 	case OrgAdminsManage, OrgOwnershipTransfer, OrgDelete:
 		return role == tenant.RoleOwner
+	case SpacesManageAny:
+		return isAdmin(role)
+	case SpaceCreatePublic:
+		return isAdmin(role) || (role == tenant.RoleMember && s.PublicSpaceCreation == "all")
+	case SpaceCreatePrivate:
+		return isAdmin(role) || (role == tenant.RoleMember && s.PrivateSpaceCreation == "all")
+	case SpaceBrowse:
+		return isAdmin(role) || role == tenant.RoleMember
 	}
 	return false
 }

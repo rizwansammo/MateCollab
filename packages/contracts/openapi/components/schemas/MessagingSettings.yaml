@@ -1,0 +1,16 @@
+type: object
+additionalProperties: false
+required:
+- public_space_creation
+- private_space_creation
+properties:
+  public_space_creation:
+    type: string
+    enum:
+    - all
+    - admins
+  private_space_creation:
+    type: string
+    enum:
+    - all
+    - admins
