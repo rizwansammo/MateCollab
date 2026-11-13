@@ -12,6 +12,7 @@ import (
 	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
 	"github.com/rizwansammo/MateCollab/services/internal/clientconfig"
+	"github.com/rizwansammo/MateCollab/services/internal/collaboration"
 	"github.com/rizwansammo/MateCollab/services/internal/memberships"
 	"github.com/rizwansammo/MateCollab/services/internal/orgcontext"
 	"github.com/rizwansammo/MateCollab/services/internal/orgs"
@@ -59,6 +60,7 @@ func mountModules(r chi.Router, cfg *config.Config, svc *Services) {
 	}}
 	membersH := memberships.NewHandler(svc.Memberships, idem.Middleware)
 	orgsH := orgs.NewHandler(svc.Orgs)
+	collabH := collaboration.NewHandler(svc.Collaboration)
 	auditH := audit.NewHandler(svc.Audit, func(r *http.Request) string {
 		a, _ := tenant.ActorFrom(r.Context())
 		if m, err := svc.Memberships.Resolve(r.Context(), a.UserID, a.OrgID); err == nil {
@@ -81,6 +83,7 @@ func mountModules(r chi.Router, cfg *config.Config, svc *Services) {
 				orgsH.OrgRoutes(r)
 				membersH.OrgRoutes(r)
 				auditH.OrgRoutes(r)
+				collabH.Routes(r)
 			})
 		})
 	})

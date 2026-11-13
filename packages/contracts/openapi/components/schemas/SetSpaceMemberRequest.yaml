@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required:
+- role
+properties:
+  role:
+    type: string
+    enum:
+    - space_admin
+    - member

@@ -27,6 +27,10 @@ var matrix = map[Permission][4]bool{ // owner, admin, member, guest
 	OrgDelete:            {true, false, false, false},
 	AuditView:            {true, true, false, false},
 	AuditExport:          {true, true, false, false},
+	SpacesManageAny:      {true, true, false, false},
+	SpaceCreatePublic:    {true, true, true, false},
+	SpaceCreatePrivate:   {true, true, true, false},
+	SpaceBrowse:          {true, true, true, false},
 }
 
 // The catalogue served to the Roles & Permissions view lists exactly the permissions above.

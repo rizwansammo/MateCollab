@@ -1,0 +1,22 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: spaceId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+post:
+  operationId: joinSpace
+  summary: joinSpace
+  tags:
+  - spaces
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Completed.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

@@ -1,0 +1,70 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: spaceId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+get:
+  operationId: getSpace
+  summary: getSpace
+  tags:
+  - spaces
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Space.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+delete:
+  operationId: deleteSpace
+  summary: Permanently delete a Space
+  tags: [spaces]
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Space deleted.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+put:
+  operationId: updateSpace
+  summary: updateSpace
+  tags:
+  - spaces
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Space.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/SpaceInput.yaml
+  parameters:
+  - name: If-Match
+    in: header
+    required: true
+    schema:
+      type: string

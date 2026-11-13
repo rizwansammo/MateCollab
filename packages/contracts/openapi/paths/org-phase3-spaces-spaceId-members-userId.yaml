@@ -1,0 +1,48 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: spaceId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+- name: userId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+put:
+  operationId: setSpaceMember
+  summary: setSpaceMember
+  tags:
+  - spaces
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Completed.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/SetSpaceMemberRequest.yaml
+delete:
+  operationId: removeSpaceMember
+  summary: removeSpaceMember
+  tags:
+  - spaces
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '204':
+      description: Completed.
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml

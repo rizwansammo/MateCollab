@@ -1,0 +1,58 @@
+type: object
+additionalProperties: false
+required:
+- id
+- org_id
+- name
+- description
+- overview
+- kind
+- visibility
+- created_by
+- created_at
+- updated_at
+- archived_at
+- joined
+properties:
+  id:
+    $ref: ./Id.yaml
+  org_id:
+    $ref: ./Id.yaml
+  name:
+    type: string
+    maxLength: 80
+  description:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  overview:
+    type:
+    - string
+    - 'null'
+    maxLength: 5000
+  kind:
+    type: string
+    enum:
+    - team
+    - project
+  visibility:
+    type: string
+    enum:
+    - public
+    - private
+  created_by:
+    $ref: ./Id.yaml
+  created_at:
+    $ref: ./Timestamp.yaml
+  updated_at:
+    $ref: ./Timestamp.yaml
+  archived_at:
+    $ref: ./NullableTimestamp.yaml
+  viewer_role:
+    type: string
+    enum:
+    - space_admin
+    - member
+  joined:
+    type: boolean

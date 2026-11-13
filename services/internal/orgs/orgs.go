@@ -128,7 +128,14 @@ func (s *Service) insertOrganisation(ctx context.Context, tx *db.Tx, org tenant.
 	if err != nil {
 		return err
 	}
-	return q.CreateSettingsSection(ctx, store.CreateSettingsSectionParams{OrgID: uuid.UUID(org), Section: "security", Settings: raw, UpdatedBy: by})
+	if err := q.CreateSettingsSection(ctx, store.CreateSettingsSectionParams{OrgID: uuid.UUID(org), Section: "security", Settings: raw, UpdatedBy: by}); err != nil {
+		return err
+	}
+	policy, err := json.Marshal(DefaultMessaging())
+	if err != nil {
+		return err
+	}
+	return q.CreateSettingsSection(ctx, store.CreateSettingsSectionParams{OrgID: uuid.UUID(org), Section: "messaging", Settings: policy, UpdatedBy: by})
 }
 
 // Create is self-service organisation creation by a signed-in user, who becomes the Owner. It
@@ -451,7 +458,10 @@ func (s Security) MaxAge() time.Duration {
 
 // Authz returns the settings that refine permissions.
 func (s Security) Authz() authz.Settings {
-	return authz.Settings{InvitePermission: s.InvitePermission, AllowGuestInvites: s.AllowGuestInvites}
+	v := authz.DefaultSettings()
+	v.InvitePermission = s.InvitePermission
+	v.AllowGuestInvites = s.AllowGuestInvites
+	return v
 }
 
 func (s Security) validate() error {

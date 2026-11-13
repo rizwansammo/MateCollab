@@ -1,0 +1,61 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+- name: spaceId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+- name: channelId
+  in: path
+  required: true
+  schema:
+    $ref: ../components/schemas/Id.yaml
+get:
+  operationId: getChannel
+  summary: getChannel
+  tags:
+  - channels
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Channel.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+put:
+  operationId: updateChannel
+  summary: updateChannel
+  tags:
+  - channels
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Channel.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/ChannelInput.yaml
+  parameters:
+  - name: If-Match
+    in: header
+    required: true
+    schema:
+      type: string

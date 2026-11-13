@@ -1,0 +1,47 @@
+type: object
+additionalProperties: false
+required:
+- id
+- org_id
+- space_id
+- name
+- topic
+- visibility
+- is_default
+- created_by
+- created_at
+- updated_at
+- archived_at
+- member
+properties:
+  id:
+    $ref: ./Id.yaml
+  org_id:
+    $ref: ./Id.yaml
+  space_id:
+    $ref: ./Id.yaml
+  name:
+    type: string
+    maxLength: 80
+  topic:
+    type:
+    - string
+    - 'null'
+    maxLength: 250
+  visibility:
+    type: string
+    enum:
+    - public
+    - private
+  is_default:
+    type: boolean
+  created_by:
+    $ref: ./Id.yaml
+  created_at:
+    $ref: ./Timestamp.yaml
+  updated_at:
+    $ref: ./Timestamp.yaml
+  archived_at:
+    $ref: ./NullableTimestamp.yaml
+  member:
+    type: boolean

@@ -13,6 +13,7 @@ import (
 
 	"github.com/rizwansammo/MateCollab/services/internal/audit"
 	"github.com/rizwansammo/MateCollab/services/internal/auth"
+	"github.com/rizwansammo/MateCollab/services/internal/collaboration"
 	"github.com/rizwansammo/MateCollab/services/internal/emails"
 	"github.com/rizwansammo/MateCollab/services/internal/memberships"
 	"github.com/rizwansammo/MateCollab/services/internal/orgs"
@@ -28,12 +29,13 @@ import (
 // Services are the feature modules of the API, wired together. mcctl builds the same graph for
 // operator commands such as `org create`.
 type Services struct {
-	Pool        *pgxpool.Pool
-	Audit       *audit.Service
-	Auth        *auth.Service
-	Users       *users.Service
-	Memberships *memberships.Service
-	Orgs        *orgs.Service
+	Pool          *pgxpool.Pool
+	Audit         *audit.Service
+	Auth          *auth.Service
+	Users         *users.Service
+	Memberships   *memberships.Service
+	Orgs          *orgs.Service
+	Collaboration *collaboration.Service
 }
 
 // Deps are the platform resources the modules are built from.
@@ -84,7 +86,7 @@ func NewServices(d Deps) (*Services, error) {
 	})
 	auditSvc := audit.New(audit.Deps{Pool: d.Pool, Jobs: d.Jobs, Storage: d.Storage, Limiter: limiter,
 		CursorKey: subkeys.Cursor, Logger: d.Logger, Now: d.Now})
-	return &Services{Pool: d.Pool, Audit: auditSvc, Auth: authSvc, Users: userSvc, Memberships: memberSvc, Orgs: orgSvc}, nil
+	return &Services{Pool: d.Pool, Audit: auditSvc, Auth: authSvc, Users: userSvc, Memberships: memberSvc, Orgs: orgSvc, Collaboration: collaboration.New(d.Pool)}, nil
 }
 
 // sessionJSON is the GET /auth/session document: everything the web client needs at start-up.

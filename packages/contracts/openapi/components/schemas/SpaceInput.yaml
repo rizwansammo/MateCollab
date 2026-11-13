@@ -1,0 +1,28 @@
+type: object
+additionalProperties: false
+required:
+- name
+properties:
+  name:
+    type: string
+    maxLength: 80
+  description:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  overview:
+    type:
+    - string
+    - 'null'
+    maxLength: 5000
+  kind:
+    type: string
+    enum:
+    - team
+    - project
+  visibility:
+    type: string
+    enum:
+    - public
+    - private

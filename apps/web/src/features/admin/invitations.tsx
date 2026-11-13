@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -32,6 +33,7 @@ import { orgKey, orgPath, useOrg } from '@/features/org/org-context';
 import { roleDescriptions, roleNames } from '@/features/org/roles';
 import { ApiError, api, errorMessage, unwrap } from '@/lib/api';
 import { formatDate, formatRelative } from '@/lib/time';
+import { useSpaces } from '@/features/spaces/data';
 import { AccessDenied } from './access-denied';
 
 export function InvitationsManager() {
@@ -209,6 +211,8 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         : ['member'];
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<InvitableRole>('member');
+  const [spaceIDs, setSpaceIDs] = useState<string[]>([]);
+  const spaces = useSpaces();
   // One key per dialog: a double submit or a retry after a network error cannot invite twice.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -218,9 +222,11 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
         api.POST('/orgs/{orgId}/invitations', {
           params: {
             path: { orgId: org.id },
-            header: { 'Idempotency-Key': `${idempotencyKey}-${digest(`${email.trim()}|${role}`)}` },
+            header: {
+              'Idempotency-Key': `${idempotencyKey}-${digest(`${email.trim()}|${role}|${[...spaceIDs].sort().join(',')}`)}`,
+            },
           },
-          body: { email: email.trim(), role },
+          body: { email: email.trim(), role, space_ids: role === 'guest' ? spaceIDs : undefined },
         }),
       ),
     onSuccess: (inv) => {
@@ -264,6 +270,34 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
               onValueChange={(v) => setRole(v as InvitableRole)}
             />
           </Field>
+          {role === 'guest' && (
+            <fieldset className="mt-4 rounded-md border border-border p-4">
+              <legend className="px-1 text-13 font-strong">Granted Spaces</legend>
+              <p className="mb-3 text-12 text-fg-muted">Guests can access only the Spaces you select.</p>
+              {spaces.isPending ? (
+                <Skeleton className="h-10 w-full" />
+              ) : spaces.data?.length ? (
+                <div className="max-h-48 space-y-2 overflow-y-auto">
+                  {spaces.data.map((space) => (
+                    <label key={space.id} className="flex cursor-pointer items-center gap-3 text-13">
+                      <Checkbox
+                        checked={spaceIDs.includes(space.id)}
+                        onCheckedChange={(checked) =>
+                          setSpaceIDs((old) =>
+                            checked ? [...old, space.id] : old.filter((id) => id !== space.id),
+                          )
+                        }
+                      />
+                      <span>{space.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-12 text-fg-muted">Create a Space before granting guest access.</p>
+              )}
+              {apiError?.field('space_ids') && <FormNotice>{apiError.field('space_ids')}</FormNotice>}
+            </fieldset>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={onClose}>
               Cancel

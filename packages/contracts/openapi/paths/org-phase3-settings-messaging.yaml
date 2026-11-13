@@ -1,0 +1,51 @@
+parameters:
+- $ref: ../components/parameters/OrgId.yaml
+get:
+  operationId: getMessagingSettings
+  summary: getMessagingSettings
+  tags:
+  - organisations
+  security:
+  - session: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessagingSettingsDocument.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+put:
+  operationId: updateMessagingSettings
+  summary: updateMessagingSettings
+  tags:
+  - organisations
+  security:
+  - session: []
+    csrf: []
+  responses:
+    '200':
+      description: Successful response.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/MessagingSettingsDocument.yaml
+    4XX:
+      $ref: ../components/responses/Problem.yaml
+    5XX:
+      $ref: ../components/responses/Problem.yaml
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/MessagingSettings.yaml
+  parameters:
+  - name: If-Match
+    in: header
+    required: true
+    schema:
+      type: string

@@ -23,22 +23,34 @@ func TestEveryTenantRouteIsIsolated(t *testing.T) {
 	staffB := h.join(tok, "staff@globex.test", "Globex Staff")
 	pendingB, _ := h.invite(ownerB.b, orgB, "pending@globex.test", "member")
 	_ = invB
+	spaceB := ownerB.b.do(http.MethodPost, "/orgs/"+orgB+"/spaces", map[string]any{
+		"name": "Operations", "kind": "team", "visibility": "public",
+	}).expect(http.StatusCreated).m()["id"].(string)
+	channelB := ownerB.b.do(http.MethodPost, "/orgs/"+orgB+"/spaces/"+spaceB+"/channels",
+		map[string]any{"name": "operations-chat", "visibility": "private"}).expect(http.StatusCreated).m()["id"].(string)
 
 	// Resource IDs that exist only in organisation B.
 	fixtures := map[string]string{
+		"spaceId":      spaceB,
+		"channelId":    channelB,
 		"userId":       userID(staffB),
 		"invitationId": pendingB,
 		"exportId":     "0199a6f0-0000-7000-8000-00000000e0e0", // exports are per organisation; any ID is foreign to A
 	}
 	// Bodies valid enough to reach the handler's lookup.
 	bodies := map[string]any{
-		"PATCH /orgs/{orgId}/members/{userId}":  map[string]string{"status": "suspended"},
-		"POST /orgs/{orgId}/ownership-transfer": map[string]string{"user_id": userID(staffB)},
-		"PATCH /orgs/{orgId}":                   map[string]string{"name": "Taken"},
-		"PATCH /orgs/{orgId}/me/membership":     map[string]string{"title": "x"},
-		"POST /orgs/{orgId}/invitations":        map[string]string{"email": "spy@acme.test", "role": "member"},
-		"PUT /orgs/{orgId}/settings/security":   map[string]any{"require_2fa": false, "session_max_age": "30d", "allow_guest_invites": true, "invite_permission": "admins"},
-		"POST /orgs/{orgId}/audit-logs/exports": map[string]any{},
+		"PATCH /orgs/{orgId}/members/{userId}":                             map[string]string{"status": "suspended"},
+		"POST /orgs/{orgId}/ownership-transfer":                            map[string]string{"user_id": userID(staffB)},
+		"PATCH /orgs/{orgId}":                                              map[string]string{"name": "Taken"},
+		"PATCH /orgs/{orgId}/me/membership":                                map[string]string{"title": "x"},
+		"POST /orgs/{orgId}/invitations":                                   map[string]string{"email": "spy@acme.test", "role": "member"},
+		"PUT /orgs/{orgId}/settings/security":                              map[string]any{"require_2fa": false, "session_max_age": "30d", "allow_guest_invites": true, "invite_permission": "admins"},
+		"POST /orgs/{orgId}/audit-logs/exports":                            map[string]any{},
+		"POST /orgs/{orgId}/spaces/{spaceId}/channels":                     map[string]any{"name": "alpha"},
+		"PUT /orgs/{orgId}/spaces/{spaceId}":                               map[string]any{"name": "alpha"},
+		"PUT /orgs/{orgId}/spaces/{spaceId}/members/{userId}":              map[string]any{"role": "member"},
+		"PUT /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}":          map[string]any{"name": "alpha"},
+		"POST /orgs/{orgId}/spaces/{spaceId}/channels/{channelId}/members": map[string]any{"user_id": userID(staffB)},
 	}
 
 	type route struct{ method, pattern string }
@@ -81,14 +93,19 @@ func TestEveryTenantRouteIsIsolated(t *testing.T) {
 		if body == nil && rt.method != http.MethodGet && rt.method != http.MethodDelete {
 			body = map[string]any{}
 		}
+		// PUT uses a resource version; supply a valid header to reach resource lookup.
+		var opts []reqOpt
+		if rt.method == http.MethodPut {
+			opts = append(opts, header("If-Match", `"1"`))
+		}
 		// (1) A member of B addresses organisation A.
-		res := ownerB.b.do(rt.method, fill(rt.pattern, orgA), body)
+		res := ownerB.b.do(rt.method, fill(rt.pattern, orgA), body, opts...)
 		if res.status != http.StatusNotFound {
 			t.Errorf("%s as a non-member: %d %s", key, res.status, res.body)
 		}
 		// (2) A's Owner addresses B's resources through A's path.
 		if strings.Count(rt.pattern, "{") > 1 {
-			res := ownerA.b.do(rt.method, fill(rt.pattern, orgA), body)
+			res := ownerA.b.do(rt.method, fill(rt.pattern, orgA), body, opts...)
 			if res.status != http.StatusNotFound {
 				t.Errorf("%s with B's resource IDs: %d %s", key, res.status, res.body)
 			}
